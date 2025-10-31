@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/nid_provider.dart';
+import '../../../shared/providers/application_provider.dart';
+import '../../../shared/models/application_model.dart';
 
 class ConfirmIdInfoScreen extends ConsumerWidget {
   const ConfirmIdInfoScreen({super.key});
@@ -125,11 +127,48 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildGenderSelection(ref, nidInfo.gender),
+                    const SizedBox(height: 16),
+                    // Contact Number (editable)
+                    _buildEditableField(
+                      ref,
+                      'Contact Number',
+                      (ref.watch(nidProvider).contactNumber ?? ''),
+                      'contactNumber',
+                    ),
                     const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => context.go('/application/address'),
+                        onPressed: () {
+                          // Persist personal info into application provider
+                          try {
+                            final parsedDob = _parseDobToDateTime(
+                              nidInfo.dateOfBirth,
+                            );
+                            final selectedGender =
+                                ref.read(nidProvider).selectedGender ??
+                                nidInfo.gender;
+                            ref
+                                .read(applicationDataProvider.notifier)
+                                .setPersonalInfo(
+                                  PersonalInfo(
+                                    nidNumber: nidInfo.nidNumber,
+                                    fullName: nidInfo.fullName,
+                                    dateOfBirth: parsedDob,
+                                    gender: selectedGender,
+                                    nidFrontImage: ref
+                                        .read(nidProvider)
+                                        .frontImagePath,
+                                    nidBackImage: ref
+                                        .read(nidProvider)
+                                        .backImagePath,
+                                  ),
+                                );
+                          } catch (_) {
+                            // Fallback: ignore and continue; form will block later if needed
+                          }
+                          context.go('/application/address');
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -144,6 +183,30 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
               ),
             ),
     );
+  }
+
+  DateTime _parseDobToDateTime(String value) {
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      // Try common formats like dd/MM/yyyy or dd-MM-yyyy
+      final match = RegExp(
+        r'^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})',
+      ).firstMatch(value);
+      if (match != null) {
+        final day = int.parse(match.group(1)!);
+        final month = int.parse(match.group(2)!);
+        final year = int.parse(match.group(3)!);
+        return DateTime(year, month, day);
+      }
+      // Try format like '18 Feb 1998'
+      try {
+        return DateFormat('d MMM yyyy').parse(value);
+      } catch (_) {
+        // Fallback to a safe default if parsing fails
+        return DateTime(1990, 1, 1);
+      }
+    }
   }
 
   Widget _buildEditableField(
@@ -309,6 +372,11 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                       break;
                     case 'fullName':
                       ref.read(nidProvider.notifier).updateFullName(newValue);
+                      break;
+                    case 'contactNumber':
+                      ref
+                          .read(nidProvider.notifier)
+                          .updateContactNumber(newValue);
                       break;
                   }
                 }

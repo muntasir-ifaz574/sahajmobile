@@ -1,9 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:developer' as developer;
 import '../models/installment_model.dart';
 import '../models/application_model.dart';
 import '../models/division_model.dart';
 import '../models/district_model.dart';
 import '../models/thana_model.dart';
+import '../models/union_model.dart';
+import '../services/api_service.dart';
+import 'nid_provider.dart';
 
 // Application Data State
 class ApplicationDataState {
@@ -59,6 +63,168 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
   @override
   ApplicationDataState build() {
     return const ApplicationDataState();
+  }
+
+  // Submit the application to backend
+  Future<Map<String, dynamic>> submitApplication({
+    String? bkashStatementPath,
+    String? bankStatementPath,
+    String? customerSignaturePath,
+  }) async {
+    if (!isApplicationComplete()) {
+      final List<String> missing = [];
+      if (state.personalInfo == null) missing.add('Personal information');
+      if (state.addressInfo == null) missing.add('Address information');
+      if (state.jobInfo == null) missing.add('Job/income information');
+      if (state.guarantorInfo == null) missing.add('Guarantor information');
+      if (state.machineInfo == null) missing.add('Machine information');
+      if (state.selectedProduct == null) missing.add('Selected product');
+      if (state.installmentPlan == null) missing.add('Installment plan');
+
+      final message =
+          'Application is incomplete: ${missing.isEmpty ? 'Unknown sections' : missing.join(', ')}';
+      developer.log(message, name: 'ApplicationDataNotifier', level: 900);
+      throw Exception(message);
+    }
+
+    setLoading(true);
+    try {
+      final product = state.selectedProduct!;
+      final plan = state.installmentPlan!;
+      final machine = state.machineInfo!;
+      final personal = state.personalInfo!;
+      final address = state.addressInfo!;
+      final job = state.jobInfo!;
+      final guarantor = state.guarantorInfo!;
+      // Prefer selected IDs from location provider when available
+      final location = ref.read(locationDataProvider);
+      final String preDivisionId =
+          location.selectedDivision?.id ?? address.division;
+      final String preDistrictId =
+          location.selectedDistrict?.id ?? address.district;
+      final String preThanaId = location.selectedThana?.id ?? address.upazila;
+      final String preUnionId = location.selectedUnion?.id ?? '';
+
+      // Text fields mapping per API contract
+      final Map<String, dynamic> textFields = {
+        'name': personal.fullName,
+        'store': 'shop',
+        'brand': product.brand,
+        'model': product.model,
+        'months_repay': plan.paymentTerms.toString(),
+        'cellphone_MRP': product.price.toString(),
+        'discountRate': '0',
+        'discount_percent': '0',
+        'phone_cost': plan.orderAmount.toString(),
+        'downPayment': plan.downPayment.toString(),
+        'down_payment_percent': plan.downPaymentPercentage.toString(),
+        'advance': plan.downPayment.toString(),
+        'gross_moic': plan.totalOutstanding.toString(),
+        'customer_due': (plan.orderAmount - plan.downPayment).toString(),
+        'customer_upcharge': plan.totalServiceFee.toString(),
+        'customer_repayment': plan.totalOutstanding.toString(),
+        'loss_reserve': '0',
+        'loss_reserve_percent': '0',
+        'total_repayment': plan.totalOutstanding.toString(),
+        'per_phone_gross': (plan.totalOutstanding - plan.orderAmount)
+            .toString(),
+        'loss_adj_moic': plan.totalOutstanding.toString(),
+        'phone_lock_expense': '0',
+        'net_repayment': plan.totalOutstanding.toString(),
+        'net_net_moic': plan.totalOutstanding.toString(),
+        'week_type': 'monthly',
+        'transaction_charge': '0',
+        'installmentAmount': plan.monthlyPayment.toString(),
+        'installmentStartDate': DateTime.now()
+            .toIso8601String()
+            .split('T')
+            .first,
+        'nationalId': personal.nidNumber,
+        'contact_number': (ref.read(nidProvider).contactNumber ?? ''),
+        'birthDate': personal.dateOfBirth.toIso8601String().split('T').first,
+        'occupation': job.occupation,
+        'comnpany_name': job.companyName,
+        'monthly_income': job.monthlyIncome.toString(),
+        'certifier_mobile': job.certifierPhone,
+        'work_certifier': job.certifierName,
+        'guarantor_name': guarantor.fullName,
+        'relationship_guarantor': guarantor.relationship,
+        'guarantor_nid': guarantor.nidNumber,
+        'gaurantor_mobile': guarantor.phoneNumber,
+        'present_residential_address': address.addressDetails,
+        'permanent_residential_address': address.addressDetails,
+        'guarantor_dob': guarantor.dateOfBirth
+            .toIso8601String()
+            .split('T')
+            .first,
+        'guarantor_marital_status': 'single',
+        'pre_divsion': preDivisionId,
+        'pre_district': preDistrictId,
+        'pre_thana': preThanaId,
+        'pre_unions': preUnionId,
+        'is_present': '1',
+        'per_divsion': preDivisionId,
+        'per_district': preDistrictId,
+        'per_thana': preThanaId,
+        'per_unions': preUnionId,
+        'imei1': machine.imei1,
+        'imei2': machine.imei2,
+      };
+
+      // File fields (paths)
+      final Map<String, String?> filePaths = {
+        'work_certifier': job.workIdFrontImage,
+        'front_nid': personal.nidFrontImage,
+        'back_nid': personal.nidBackImage,
+        'gaurantor_front_nid': guarantor.nidFrontImage,
+        'gaurantor_back_nid': guarantor.nidBackImage,
+        'bKash_statement': bkashStatementPath,
+        'bank_statement': bankStatementPath,
+        'customer_signature': customerSignaturePath,
+      };
+
+      final result = await ApiService.submitApplication(
+        textFields: textFields,
+        filePaths: filePaths,
+      );
+
+      // Logging success summary
+      developer.log(
+        'submitApplication success',
+        name: 'ApplicationDataNotifier',
+        error: null,
+        stackTrace: null,
+      );
+      if (result.containsKey('status')) {
+        developer.log(
+          'submitApplication response status: ${result['status']}',
+          name: 'ApplicationDataNotifier',
+        );
+      }
+
+      // If backend indicates success, clear all stored form data
+      final dynamic status = result['status'];
+      final bool isSuccess =
+          status == 1 || status == '1' || result['success'] == true;
+      if (isSuccess) {
+        // Reset application data
+        reset();
+        // Reset related providers
+        ref.read(nidProvider.notifier).reset();
+        ref.read(locationDataProvider.notifier).reset();
+      }
+
+      setLoading(false);
+      return result;
+    } catch (e) {
+      developer.log(
+        'submitApplication failed: $e',
+        name: 'ApplicationDataNotifier',
+        level: 1000,
+      );
+      setError(e.toString());
+      rethrow;
+    }
   }
 
   void setSelectedProduct(Product product) {
@@ -292,58 +458,74 @@ class LocationDataState {
   final List<Division> divisions;
   final List<District> districts;
   final List<Thana> thanas;
+  final List<UnionModel> unions;
   final Division? selectedDivision;
   final District? selectedDistrict;
   final Thana? selectedThana;
+  final UnionModel? selectedUnion;
   final bool isLoadingDivisions;
   final bool isLoadingDistricts;
   final bool isLoadingThanas;
+  final bool isLoadingUnions;
   final String? divisionError;
   final String? districtError;
   final String? thanaError;
+  final String? unionError;
 
   const LocationDataState({
     this.divisions = const [],
     this.districts = const [],
     this.thanas = const [],
+    this.unions = const [],
     this.selectedDivision,
     this.selectedDistrict,
     this.selectedThana,
+    this.selectedUnion,
     this.isLoadingDivisions = false,
     this.isLoadingDistricts = false,
     this.isLoadingThanas = false,
+    this.isLoadingUnions = false,
     this.divisionError,
     this.districtError,
     this.thanaError,
+    this.unionError,
   });
 
   LocationDataState copyWith({
     List<Division>? divisions,
     List<District>? districts,
     List<Thana>? thanas,
+    List<UnionModel>? unions,
     Division? selectedDivision,
     District? selectedDistrict,
     Thana? selectedThana,
+    UnionModel? selectedUnion,
     bool? isLoadingDivisions,
     bool? isLoadingDistricts,
     bool? isLoadingThanas,
+    bool? isLoadingUnions,
     String? divisionError,
     String? districtError,
     String? thanaError,
+    String? unionError,
   }) {
     return LocationDataState(
       divisions: divisions ?? this.divisions,
       districts: districts ?? this.districts,
       thanas: thanas ?? this.thanas,
+      unions: unions ?? this.unions,
       selectedDivision: selectedDivision ?? this.selectedDivision,
       selectedDistrict: selectedDistrict ?? this.selectedDistrict,
       selectedThana: selectedThana ?? this.selectedThana,
+      selectedUnion: selectedUnion ?? this.selectedUnion,
       isLoadingDivisions: isLoadingDivisions ?? this.isLoadingDivisions,
       isLoadingDistricts: isLoadingDistricts ?? this.isLoadingDistricts,
       isLoadingThanas: isLoadingThanas ?? this.isLoadingThanas,
+      isLoadingUnions: isLoadingUnions ?? this.isLoadingUnions,
       divisionError: divisionError ?? this.divisionError,
       districtError: districtError ?? this.districtError,
       thanaError: thanaError ?? this.thanaError,
+      unionError: unionError ?? this.unionError,
     );
   }
 }
@@ -367,13 +549,19 @@ class LocationDataNotifier extends Notifier<LocationDataState> {
     state = state.copyWith(thanas: thanas, thanaError: null);
   }
 
+  void setUnions(List<UnionModel> unions) {
+    state = state.copyWith(unions: unions, unionError: null);
+  }
+
   void setSelectedDivision(Division division) {
     state = state.copyWith(
       selectedDivision: division,
       selectedDistrict: null,
       selectedThana: null,
+      selectedUnion: null,
       districts: const [],
       thanas: const [],
+      unions: const [],
     );
   }
 
@@ -381,12 +569,22 @@ class LocationDataNotifier extends Notifier<LocationDataState> {
     state = state.copyWith(
       selectedDistrict: district,
       selectedThana: null,
+      selectedUnion: null,
       thanas: const [],
+      unions: const [],
     );
   }
 
   void setSelectedThana(Thana thana) {
-    state = state.copyWith(selectedThana: thana);
+    state = state.copyWith(
+      selectedThana: thana,
+      selectedUnion: null,
+      unions: const [],
+    );
+  }
+
+  void setSelectedUnion(UnionModel unionModel) {
+    state = state.copyWith(selectedUnion: unionModel);
   }
 
   void setLoadingDivisions(bool loading) {
@@ -401,6 +599,10 @@ class LocationDataNotifier extends Notifier<LocationDataState> {
     state = state.copyWith(isLoadingThanas: loading);
   }
 
+  void setLoadingUnions(bool loading) {
+    state = state.copyWith(isLoadingUnions: loading);
+  }
+
   void setDivisionError(String error) {
     state = state.copyWith(divisionError: error, isLoadingDivisions: false);
   }
@@ -413,11 +615,16 @@ class LocationDataNotifier extends Notifier<LocationDataState> {
     state = state.copyWith(thanaError: error, isLoadingThanas: false);
   }
 
+  void setUnionError(String error) {
+    state = state.copyWith(unionError: error, isLoadingUnions: false);
+  }
+
   void clearErrors() {
     state = state.copyWith(
       divisionError: null,
       districtError: null,
       thanaError: null,
+      unionError: null,
     );
   }
 

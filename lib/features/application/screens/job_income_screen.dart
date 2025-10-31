@@ -241,15 +241,15 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
                   labelText: 'Certifier\'s Mobile Number',
-                  hintText: '+880 phone number',
+                  hintText: '11-digit mobile number (e.g. 01XXXXXXXXX)',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter certifier\'s mobile number';
                   }
-                  if (!RegExp(r'^\+880[0-9]{10}$').hasMatch(value)) {
-                    return 'Please enter a valid Bangladesh mobile number (+880xxxxxxxxxx)';
+                  if (!RegExp(r'^01[0-9]{9}$').hasMatch(value)) {
+                    return 'Please enter a valid 11-digit mobile number starting with 01';
                   }
                   return null;
                 },

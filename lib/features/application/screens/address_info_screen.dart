@@ -87,6 +87,21 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
     }
   }
 
+  Future<void> _fetchUnions(String upazillaId) async {
+    ref.read(locationDataProvider.notifier).setLoadingUnions(true);
+    try {
+      final unions = await ApiService.getUnions(upazillaId: upazillaId);
+      if (!mounted) return;
+      ref.read(locationDataProvider.notifier).setUnions(unions);
+    } catch (e) {
+      if (!mounted) return;
+      ref.read(locationDataProvider.notifier).setUnionError(e.toString());
+    } finally {
+      if (!mounted) return;
+      ref.read(locationDataProvider.notifier).setLoadingUnions(false);
+    }
+  }
+
   void _saveAddressInfo() {
     final locationState = ref.read(locationDataProvider);
     if (locationState.selectedDivision == null ||
@@ -266,6 +281,7 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                         ref
                             .read(locationDataProvider.notifier)
                             .setSelectedThana(selected);
+                        _fetchUnions(selected.id);
                       },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -284,6 +300,55 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     locationState.thanaError!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Union',
+                  hintText: 'Please select',
+                ),
+                isExpanded: true,
+                value: locationState.selectedUnion?.id,
+                items: locationState.unions
+                    .map(
+                      (u) => DropdownMenuItem<String>(
+                        value: u.id,
+                        child: Text(u.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged:
+                    (locationState.isLoadingUnions ||
+                        locationState.unions.isEmpty)
+                    ? null
+                    : (value) {
+                        final selected = locationState.unions.firstWhere(
+                          (u) => u.id == value,
+                        );
+                        ref
+                            .read(locationDataProvider.notifier)
+                            .setSelectedUnion(selected);
+                      },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select a union';
+                  }
+                  return null;
+                },
+              ),
+              if (locationState.isLoadingUnions)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+              if (locationState.unionError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    locationState.unionError!,
                     style: const TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 ),

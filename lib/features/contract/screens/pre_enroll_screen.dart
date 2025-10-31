@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:developer' as developer;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/application_provider.dart';
@@ -10,6 +11,14 @@ class PreEnrollScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final appState = ref.watch(applicationDataProvider);
+    final isPersonalDone = ref.watch(isPersonalInfoCompleteProvider);
+    final isAddressDone = ref.watch(isAddressInfoCompleteProvider);
+    final isJobDone = ref.watch(isJobInfoCompleteProvider);
+    final isGuarantorDone = ref.watch(isGuarantorInfoCompleteProvider);
+    final isMachineDone = ref.watch(isMachineInfoCompleteProvider);
+    final hasProduct = ref.watch(selectedProductProvider) != null;
+    final hasPlan = ref.watch(installmentPlanProvider) != null;
     final productName = ref.watch(productDisplayNameProvider);
     final primaryIMEI = ref.watch(primaryIMEIProvider);
     final secondaryIMEI = ref.watch(secondaryIMEIProvider);
@@ -84,6 +93,57 @@ class PreEnrollScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
+            ],
+
+            // Missing sections (if any)
+            if (!(isPersonalDone &&
+                isAddressDone &&
+                isJobDone &&
+                isGuarantorDone &&
+                isMachineDone &&
+                hasProduct &&
+                hasPlan)) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade400),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Incomplete sections',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (!isPersonalDone)
+                      const Text('- Personal information missing'),
+                    if (!isAddressDone)
+                      const Text('- Address information missing'),
+                    if (!isJobDone)
+                      const Text('- Job/income information missing'),
+                    if (!isGuarantorDone)
+                      const Text('- Guarantor information missing'),
+                    if (!isMachineDone)
+                      const Text('- Machine information missing'),
+                    if (!hasProduct) const Text('- Product not selected'),
+                    if (!hasPlan) const Text('- Installment plan not set'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
 
             // Product Information Card
@@ -229,12 +289,82 @@ class PreEnrollScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => context.go('/contract/activation'),
+                onPressed:
+                    appState.isLoading ||
+                        !(isPersonalDone &&
+                            isAddressDone &&
+                            isJobDone &&
+                            isGuarantorDone &&
+                            isMachineDone &&
+                            hasProduct &&
+                            hasPlan)
+                    ? null
+                    : () async {
+                        developer.log(
+                          'Confirm tapped. Starting submission...',
+                          name: 'PreEnrollScreen',
+                        );
+                        try {
+                          developer.log(
+                            'Calling submitApplication',
+                            name: 'PreEnrollScreen',
+                          );
+                          final result = await ref
+                              .read(applicationDataProvider.notifier)
+                              .submitApplication();
+
+                          if (context.mounted) {
+                            developer.log(
+                              'Submission success. Result: ${result.toString()}',
+                              name: 'PreEnrollScreen',
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  (result['message']?.toString() ??
+                                      'Submitted successfully'),
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            developer.log(
+                              'Navigating to /contract/activation',
+                              name: 'PreEnrollScreen',
+                            );
+                            context.go('/contract/activation');
+                          }
+                        } catch (e) {
+                          developer.log(
+                            'Submission failed: $e',
+                            name: 'PreEnrollScreen',
+                            level: 1000,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Submission failed: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Confirm'),
+                child: appState.isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Text('Confirm'),
               ),
             ),
           ],

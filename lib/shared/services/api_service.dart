@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 import '../models/division_model.dart';
 import '../models/district_model.dart';
 import '../models/thana_model.dart';
+import '../models/union_model.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -61,6 +62,45 @@ class ApiService {
 
   static void clearAuthToken() {
     _dio.options.headers.remove('Authorization');
+  }
+
+  // Application submission (multipart/form-data)
+  static Future<Map<String, dynamic>> submitApplication({
+    required Map<String, dynamic> textFields,
+    Map<String, String?> filePaths = const {},
+  }) async {
+    try {
+      final Map<String, dynamic> payload = {...textFields};
+
+      // Attach files if provided
+      for (final entry in filePaths.entries) {
+        final String fieldName = entry.key;
+        final String? path = entry.value;
+        if (path != null && path.isNotEmpty) {
+          payload[fieldName] = await MultipartFile.fromFile(
+            path,
+            filename: path.split('/').isNotEmpty
+                ? path.split('/').last
+                : 'upload',
+          );
+        }
+      }
+
+      final formData = FormData.fromMap(payload);
+
+      final response = await _dio.post(
+        '/customer_verify_and_save',
+        data: formData,
+      );
+
+      final dynamic raw = response.data;
+      final Map<String, dynamic> data = raw is String
+          ? (jsonDecode(raw) as Map<String, dynamic>)
+          : (raw as Map<String, dynamic>);
+      return data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
   }
 
   // Auth endpoints
@@ -356,6 +396,70 @@ class ApiService {
       throw _handleError(e);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  static Future<List<UnionModel>> getUnions({
+    required String upazillaId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/get_unions',
+        data: {'upazilla_id': upazillaId},
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+
+      final dynamic raw = response.data;
+      final Map<String, dynamic> data = raw is String
+          ? (jsonDecode(raw) as Map<String, dynamic>)
+          : (raw as Map<String, dynamic>);
+
+      if ((data['status'] as int?) == 1) {
+        final List<dynamic> result = data['result'] as List<dynamic>;
+
+        final unions = result
+            .whereType<Map<String, dynamic>>()
+            .map((e) => UnionModel.fromJson(e))
+            .toList();
+
+        return unions;
+      }
+
+      throw Exception(data['message']?.toString() ?? 'Failed to load unions');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Dashboard summary
+  static Future<Map<String, int>> getDashboardCounts() async {
+    try {
+      final shopId = await StorageService.getShopId();
+      final response = await _dio.post(
+        '/get_dashboard',
+        data: FormData.fromMap({if (shopId != null) 'shop_id': shopId}),
+      );
+      final dynamic raw = response.data;
+      final Map<String, dynamic> data = raw is String
+          ? (jsonDecode(raw) as Map<String, dynamic>)
+          : (raw as Map<String, dynamic>);
+      if ((data['status'] as int?) == 1) {
+        final result = data['result'] as Map<String, dynamic>;
+        int parseInt(String key) =>
+            int.tryParse(result[key]?.toString() ?? '0') ?? 0;
+        return {
+          'tot_pending_cust': parseInt('tot_pending_cust'),
+          'tot_approve_cust': parseInt('tot_approve_cust'),
+          'tot_disapprove_cust': parseInt('tot_disapprove_cust'),
+        };
+      }
+      throw Exception(
+        data['message']?.toString() ?? 'Failed to load dashboard',
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
   }
 }

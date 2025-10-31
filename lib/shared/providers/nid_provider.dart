@@ -9,6 +9,7 @@ class NidState {
   final String? backImagePath;
   final String? error;
   final String? selectedGender;
+  final String? contactNumber;
 
   const NidState({
     this.isLoading = false,
@@ -17,6 +18,7 @@ class NidState {
     this.backImagePath,
     this.error,
     this.selectedGender,
+    this.contactNumber,
   });
 
   NidState copyWith({
@@ -26,6 +28,7 @@ class NidState {
     String? backImagePath,
     String? error,
     String? selectedGender,
+    String? contactNumber,
   }) {
     return NidState(
       isLoading: isLoading ?? this.isLoading,
@@ -34,6 +37,7 @@ class NidState {
       backImagePath: backImagePath ?? this.backImagePath,
       error: error ?? this.error,
       selectedGender: selectedGender ?? this.selectedGender,
+      contactNumber: contactNumber ?? this.contactNumber,
     );
   }
 }
@@ -93,6 +97,10 @@ class NidNotifier extends Notifier<NidState> {
 
   void updateSelectedGender(String gender) {
     state = state.copyWith(selectedGender: gender);
+  }
+
+  void updateContactNumber(String contactNumber) {
+    state = state.copyWith(contactNumber: contactNumber);
   }
 
   void updateNidNumber(String nidNumber) {

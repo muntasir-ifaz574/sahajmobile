@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/storage_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../shared/services/api_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -37,10 +38,10 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Date Filter Tabs
-              _buildDateFilterTabs(),
-
-              const SizedBox(height: 24),
+              // // Date Filter Tabs
+              // _buildDateFilterTabs(),
+              //
+              // const SizedBox(height: 24),
 
               // Sales Data Section
               _buildSalesDataSection(),
@@ -214,7 +215,7 @@ class DashboardScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             const Text(
               'Sales Data',
@@ -224,35 +225,41 @@ class DashboardScreen extends ConsumerWidget {
                 color: AppTheme.textPrimary,
               ),
             ),
-            TextButton(
-              onPressed: () {
-                // TODO: Navigate to sales details
-              },
-              child: const Text(
-                'Details >',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            // TextButton(
+            //   onPressed: () {
+            //     // TODO: Navigate to sales details
+            //   },
+            //   child: const Text(
+            //     'Details >',
+            //     style: TextStyle(
+            //       color: AppTheme.primaryColor,
+            //       fontWeight: FontWeight.w600,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          childAspectRatio: 1.5,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          children: [
-            _buildDataCard('SALES', '0', AppTheme.successColor),
-            _buildDataCard('SALES VALUE (TK)', '0', AppTheme.successColor),
-            _buildDataCard('NEVER PAID', '0% >', AppTheme.textPrimary),
-            _buildDataCard('DEVICE LOCKED', '0% >', AppTheme.textPrimary),
-            // _buildDataCard('APP SIGN UP RATE', '0% >', AppTheme.textPrimary),
-          ],
+        FutureBuilder<Map<String, int>>(
+          future: ApiService.getDashboardCounts(),
+          builder: (context, snapshot) {
+            final pending = snapshot.data?['tot_pending_cust']?.toString() ?? '0';
+            final approved = snapshot.data?['tot_approve_cust']?.toString() ?? '0';
+            final disapproved = snapshot.data?['tot_disapprove_cust']?.toString() ?? '0';
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              childAspectRatio: 1.5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              children: [
+                _buildDataCard('TOTAL PENDING', pending, AppTheme.primaryColor),
+                _buildDataCard('TOTAL APPROVED', approved, AppTheme.successColor,),
+                _buildDataCard('TOTAL DISAPPROVED', disapproved, AppTheme.errorColor,),
+              ],
+            );
+          },
         ),
       ],
     );
