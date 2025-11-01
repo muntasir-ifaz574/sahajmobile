@@ -241,7 +241,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
                   labelText: 'Certifier\'s Mobile Number',
-                  hintText: '11-digit mobile number (e.g. 01XXXXXXXXX)',
+                  hintText: '01XXXXXXXXX',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {

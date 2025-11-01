@@ -8,6 +8,7 @@ import '../models/thana_model.dart';
 import '../models/union_model.dart';
 import '../services/api_service.dart';
 import 'nid_provider.dart';
+import '../services/storage_service.dart';
 
 // Application Data State
 class ApplicationDataState {
@@ -104,11 +105,13 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
           location.selectedDistrict?.id ?? address.district;
       final String preThanaId = location.selectedThana?.id ?? address.upazila;
       final String preUnionId = location.selectedUnion?.id ?? '';
+      // Get shop ID from storage
+      final shopId = await StorageService.getShopId();
 
       // Text fields mapping per API contract
       final Map<String, dynamic> textFields = {
         'name': personal.fullName,
-        'store': 'shop',
+        'store': shopId,
         'brand': product.brand,
         'model': product.model,
         'months_repay': plan.paymentTerms.toString(),
@@ -126,8 +129,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'loss_reserve': '0',
         'loss_reserve_percent': '0',
         'total_repayment': plan.totalOutstanding.toString(),
-        'per_phone_gross': (plan.totalOutstanding - plan.orderAmount)
-            .toString(),
+        'per_phone_gross': (plan.totalOutstanding - plan.orderAmount).toString(),
         'loss_adj_moic': plan.totalOutstanding.toString(),
         'phone_lock_expense': '0',
         'net_repayment': plan.totalOutstanding.toString(),
@@ -135,10 +137,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'week_type': 'monthly',
         'transaction_charge': '0',
         'installmentAmount': plan.monthlyPayment.toString(),
-        'installmentStartDate': DateTime.now()
-            .toIso8601String()
-            .split('T')
-            .first,
+        'installmentStartDate': DateTime.now().toIso8601String().split('T').first,
         'nationalId': personal.nidNumber,
         'contact_number': (ref.read(nidProvider).contactNumber ?? ''),
         'birthDate': personal.dateOfBirth.toIso8601String().split('T').first,
@@ -153,10 +152,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'gaurantor_mobile': guarantor.phoneNumber,
         'present_residential_address': address.addressDetails,
         'permanent_residential_address': address.addressDetails,
-        'guarantor_dob': guarantor.dateOfBirth
-            .toIso8601String()
-            .split('T')
-            .first,
+        'guarantor_dob': guarantor.dateOfBirth.toIso8601String().split('T').first,
         'guarantor_marital_status': 'single',
         'pre_divsion': preDivisionId,
         'pre_district': preDistrictId,
