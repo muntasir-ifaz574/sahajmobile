@@ -11,6 +11,7 @@ import '../../features/contract/screens/activation_progress_screen.dart';
 import '../../features/contract/screens/online_contract_screen.dart';
 import '../../features/contract/screens/pre_enroll_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
+import '../../features/dashboard/screens/application_list_screen.dart';
 import '../../features/installment/screens/confirm_information_screen.dart';
 import '../../features/installment/screens/installment_plan_screen.dart';
 import '../../features/installment/screens/payment_terms_screen.dart';
@@ -78,6 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: '/dashboard/applications',
+        builder: (context, state) => const ApplicationListScreen(),
       ),
 
       // Installment Plan Flow

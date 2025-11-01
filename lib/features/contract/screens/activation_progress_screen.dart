@@ -79,24 +79,9 @@ class ActivationProgressScreen extends StatelessWidget {
               // Action Buttons
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Refresh activation status
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Refresh'),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              SizedBox(
-                width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
-                    context.go('/dashboard');
+                    context.go('/dashboard/applications');
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),

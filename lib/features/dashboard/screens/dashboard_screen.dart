@@ -143,7 +143,7 @@ class DashboardScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.dashboard_outlined),
               title: const Text('Dashboard'),
-              onTap: () => context.go('/dashboard'),
+              onTap: () => context.pop(),
             ),
             const Divider(),
             ListTile(
@@ -243,9 +243,12 @@ class DashboardScreen extends ConsumerWidget {
         FutureBuilder<Map<String, int>>(
           future: ApiService.getDashboardCounts(),
           builder: (context, snapshot) {
-            final pending = snapshot.data?['tot_pending_cust']?.toString() ?? '0';
-            final approved = snapshot.data?['tot_approve_cust']?.toString() ?? '0';
-            final disapproved = snapshot.data?['tot_disapprove_cust']?.toString() ?? '0';
+            final pending =
+                snapshot.data?['tot_pending_cust']?.toString() ?? '0';
+            final approved =
+                snapshot.data?['tot_approve_cust']?.toString() ?? '0';
+            final disapproved =
+                snapshot.data?['tot_disapprove_cust']?.toString() ?? '0';
             return GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -255,8 +258,16 @@ class DashboardScreen extends ConsumerWidget {
               mainAxisSpacing: 12,
               children: [
                 _buildDataCard('TOTAL PENDING', pending, AppTheme.primaryColor),
-                _buildDataCard('TOTAL APPROVED', approved, AppTheme.successColor,),
-                _buildDataCard('TOTAL DISAPPROVED', disapproved, AppTheme.errorColor,),
+                _buildDataCard(
+                  'TOTAL APPROVED',
+                  approved,
+                  AppTheme.successColor,
+                ),
+                _buildDataCard(
+                  'TOTAL DISAPPROVED',
+                  disapproved,
+                  AppTheme.errorColor,
+                ),
               ],
             );
           },
@@ -414,7 +425,7 @@ class DashboardScreen extends ConsumerWidget {
           'Application',
           Icons.description_outlined,
           () {
-            // TODO: Navigate to application
+            context.go('/dashboard/applications');
           },
         ),
       ],

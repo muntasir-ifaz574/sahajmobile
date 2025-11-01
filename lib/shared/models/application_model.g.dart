@@ -128,6 +128,7 @@ GuarantorInfo _$GuarantorInfoFromJson(Map<String, dynamic> json) =>
       fullName: json['fullName'] as String,
       dateOfBirth: DateTime.parse(json['dateOfBirth'] as String),
       phoneNumber: json['phoneNumber'] as String,
+      maritalStatus: json['maritalStatus'] as String,
       nidFrontImage: json['nidFrontImage'] as String?,
       nidBackImage: json['nidBackImage'] as String?,
     );
@@ -139,6 +140,7 @@ Map<String, dynamic> _$GuarantorInfoToJson(GuarantorInfo instance) =>
       'fullName': instance.fullName,
       'dateOfBirth': instance.dateOfBirth.toIso8601String(),
       'phoneNumber': instance.phoneNumber,
+      'maritalStatus': instance.maritalStatus,
       'nidFrontImage': instance.nidFrontImage,
       'nidBackImage': instance.nidBackImage,
     };

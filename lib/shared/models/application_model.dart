@@ -134,6 +134,7 @@ class GuarantorInfo {
   final String fullName;
   final DateTime dateOfBirth;
   final String phoneNumber;
+  final String maritalStatus;
   final String? nidFrontImage;
   final String? nidBackImage;
 
@@ -143,6 +144,7 @@ class GuarantorInfo {
     required this.fullName,
     required this.dateOfBirth,
     required this.phoneNumber,
+    required this.maritalStatus,
     this.nidFrontImage,
     this.nidBackImage,
   });

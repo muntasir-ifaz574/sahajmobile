@@ -129,7 +129,8 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'loss_reserve': '0',
         'loss_reserve_percent': '0',
         'total_repayment': plan.totalOutstanding.toString(),
-        'per_phone_gross': (plan.totalOutstanding - plan.orderAmount).toString(),
+        'per_phone_gross': (plan.totalOutstanding - plan.orderAmount)
+            .toString(),
         'loss_adj_moic': plan.totalOutstanding.toString(),
         'phone_lock_expense': '0',
         'net_repayment': plan.totalOutstanding.toString(),
@@ -137,7 +138,10 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'week_type': 'monthly',
         'transaction_charge': '0',
         'installmentAmount': plan.monthlyPayment.toString(),
-        'installmentStartDate': DateTime.now().toIso8601String().split('T').first,
+        'installmentStartDate': DateTime.now()
+            .toIso8601String()
+            .split('T')
+            .first,
         'nationalId': personal.nidNumber,
         'contact_number': (ref.read(nidProvider).contactNumber ?? ''),
         'birthDate': personal.dateOfBirth.toIso8601String().split('T').first,
@@ -152,8 +156,11 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'gaurantor_mobile': guarantor.phoneNumber,
         'present_residential_address': address.addressDetails,
         'permanent_residential_address': address.addressDetails,
-        'guarantor_dob': guarantor.dateOfBirth.toIso8601String().split('T').first,
-        'guarantor_marital_status': 'single',
+        'guarantor_dob': guarantor.dateOfBirth
+            .toIso8601String()
+            .split('T')
+            .first,
+        'guarantor_marital_status': guarantor.maritalStatus,
         'pre_divsion': preDivisionId,
         'pre_district': preDistrictId,
         'pre_thana': preThanaId,

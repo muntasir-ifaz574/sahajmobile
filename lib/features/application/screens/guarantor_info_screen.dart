@@ -60,13 +60,14 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
       ).format(guarantorInfo.dateOfBirth);
       _selectedDate = guarantorInfo.dateOfBirth;
       _relationship = guarantorInfo.relationship;
+      _maritalStatus = guarantorInfo.maritalStatus;
       _frontImagePath = guarantorInfo.nidFrontImage;
       _backImagePath = guarantorInfo.nidBackImage;
     }
   }
 
   void _saveGuarantorInfo() {
-    if (_selectedDate == null || _relationship == null) return;
+    if (_selectedDate == null || _relationship == null || _maritalStatus == null) return;
 
     final guarantorInfo = GuarantorInfo(
       relationship: _relationship!,
@@ -74,6 +75,7 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
       fullName: _nameController.text.trim(),
       dateOfBirth: _selectedDate!,
       phoneNumber: _phoneController.text.trim(),
+      maritalStatus: _maritalStatus!,
       nidFrontImage: _frontImagePath,
       nidBackImage: _backImagePath,
     );
