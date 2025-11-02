@@ -102,14 +102,43 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
         .setBkashStatementPath(_bkashStatementFile?.path);
   }
 
-  Future<void> _pickWorkCertifierFile() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickWorkCertifierImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-    if (image != null) {
-      setState(() {
-        _workCertifierFile = File(image.path);
-      });
+      if (image != null) {
+        setState(() {
+          _workCertifierFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _captureWorkCertifierImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+      if (image != null) {
+        setState(() {
+          _workCertifierFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error capturing image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -383,48 +412,86 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(
+                    color: _workCertifierFile != null
+                        ? Colors.green
+                        : Colors.grey.shade300,
+                    width: _workCertifierFile != null ? 2 : 1,
+                  ),
                   borderRadius: BorderRadius.circular(8),
+                  color: _workCertifierFile != null
+                      ? Colors.green.shade50
+                      : Colors.white,
                 ),
                 child: Column(
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: _pickWorkCertifierFile,
-                      icon: Icon(
-                        _workCertifierFile != null
-                            ? Icons.check
-                            : Icons.upload_file,
-                      ),
-                      label: Text(
-                        _workCertifierFile != null
-                            ? 'File Selected ✓'
-                            : 'Upload File',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _workCertifierFile != null
-                            ? Colors.green
-                            : AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 24,
-                        ),
-                      ),
-                    ),
                     if (_workCertifierFile != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Selected: ${_workCertifierFile!.path.split('/').last}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.green,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Selected: ${_workCertifierFile!.path.split('/').last}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            color: Colors.red,
+                            onPressed: () {
+                              setState(() {
+                                _workCertifierFile = null;
+                              });
+                            },
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 12),
                     ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _pickWorkCertifierImage,
+                            icon: const Icon(Icons.image, size: 18),
+                            label: const Text('Upload Image'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _captureWorkCertifierImage,
+                            icon: const Icon(Icons.camera_alt, size: 18),
+                            label: const Text('Capture'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     const Text(
                       'Supported formats: JPG, JPEG, PNG',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
                 ),
