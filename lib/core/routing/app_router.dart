@@ -30,7 +30,7 @@ class RouterRefresh extends ChangeNotifier {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
     refreshListenable: RouterRefresh(ref),
     redirect: (context, state) {
@@ -172,4 +172,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  return router;
 });

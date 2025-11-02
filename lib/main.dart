@@ -19,12 +19,23 @@ class SahajMobileApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return PopScope(
-      canPop: false,
-      child: MaterialApp.router(
-        title: 'SAHAJMOBILE',
-        theme: AppTheme.lightTheme,
-        routerConfig: router,
-        debugShowCheckedModeBanner: false,
+      canPop: router.canPop(),
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (!didPop && router.canPop()) {
+          router.pop();
+        }
+      },
+      child: SafeArea(
+        bottom: true,
+        top: false,
+        left: false,
+        right: false,
+        child: MaterialApp.router(
+          title: 'SAHAJMOBILE',
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }
