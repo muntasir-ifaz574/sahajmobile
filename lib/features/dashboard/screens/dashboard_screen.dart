@@ -225,6 +225,20 @@ class DashboardScreen extends ConsumerWidget {
                 if (context.mounted) context.go('/login');
               },
             ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  'Beta Version 0.0.1',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary.withOpacity(0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
