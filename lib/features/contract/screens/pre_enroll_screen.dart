@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/application_provider.dart';
+import '../../../shared/models/application_model.dart';
 
 class PreEnrollScreen extends ConsumerWidget {
   const PreEnrollScreen({super.key});
@@ -16,6 +17,7 @@ class PreEnrollScreen extends ConsumerWidget {
     final isAddressDone = ref.watch(isAddressInfoCompleteProvider);
     final isJobDone = ref.watch(isJobInfoCompleteProvider);
     final isGuarantorDone = ref.watch(isGuarantorInfoCompleteProvider);
+    final guarantorInfo = ref.watch(guarantorInfoProvider);
     final isMachineDone = ref.watch(isMachineInfoCompleteProvider);
     final hasProduct = ref.watch(selectedProductProvider) != null;
     final hasPlan = ref.watch(installmentPlanProvider) != null;
@@ -134,8 +136,15 @@ class PreEnrollScreen extends ConsumerWidget {
                       const Text('- Address information missing'),
                     if (!isJobDone)
                       const Text('- Job/income information missing'),
-                    if (!isGuarantorDone)
-                      const Text('- Guarantor information missing'),
+                    if (!isGuarantorDone) ...[
+                      const Text('- Guarantor information missing:'),
+                      ..._getMissingGuarantorFields(guarantorInfo).map(
+                        (field) => Padding(
+                          padding: const EdgeInsets.only(left: 16, top: 4),
+                          child: Text('  • $field'),
+                        ),
+                      ),
+                    ],
                     if (!isMachineDone)
                       const Text('- Machine information missing'),
                     if (!hasProduct) const Text('- Product not selected'),
@@ -397,5 +406,38 @@ class PreEnrollScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  List<String> _getMissingGuarantorFields(GuarantorInfo? guarantorInfo) {
+    final List<String> missing = [];
+
+    if (guarantorInfo == null) {
+      return [
+        'Relationship',
+        'NID Number',
+        'Full Name',
+        'Date of Birth',
+        'Phone Number',
+        'Marital Status',
+      ];
+    }
+
+    if (guarantorInfo.relationship.isEmpty) {
+      missing.add('Relationship');
+    }
+    if (guarantorInfo.nidNumber.isEmpty) {
+      missing.add('NID Number');
+    }
+    if (guarantorInfo.fullName.isEmpty) {
+      missing.add('Full Name');
+    }
+    if (guarantorInfo.phoneNumber.isEmpty) {
+      missing.add('Phone Number');
+    }
+    if (guarantorInfo.maritalStatus.isEmpty) {
+      missing.add('Marital Status');
+    }
+
+    return missing;
   }
 }

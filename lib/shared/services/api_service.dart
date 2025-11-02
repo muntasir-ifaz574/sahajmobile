@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:developer' as developer;
 import '../../core/constants/app_constants.dart';
 import '../models/user_model.dart';
 import '../models/division_model.dart';
@@ -70,36 +72,221 @@ class ApiService {
     Map<String, String?> filePaths = const {},
   }) async {
     try {
+      developer.log(
+        '=== Starting customer_verify_and_save API call ===',
+        name: 'ApiService',
+      );
+
       final Map<String, dynamic> payload = {...textFields};
 
-      // Attach files if provided
+      // Verify and attach files with detailed logging
+      final List<String> uploadedFiles = [];
+      final List<String> missingFiles = [];
+      final List<String> invalidFiles = [];
+
+      developer.log(
+        'Total file fields expected: ${filePaths.length}',
+        name: 'ApiService',
+      );
+
       for (final entry in filePaths.entries) {
         final String fieldName = entry.key;
         final String? path = entry.value;
-        if (path != null && path.isNotEmpty) {
-          payload[fieldName] = await MultipartFile.fromFile(
+
+        developer.log(
+          'Processing file field: $fieldName, path: ${path ?? "null"}',
+          name: 'ApiService',
+        );
+
+        if (path == null || path.isEmpty) {
+          missingFiles.add(fieldName);
+          developer.log(
+            'WARNING: File field "$fieldName" is null or empty - skipping',
+            name: 'ApiService',
+            level: 900,
+          );
+          continue;
+        }
+
+        // Check if file exists
+        final file = File(path);
+        if (!await file.exists()) {
+          invalidFiles.add('$fieldName: File does not exist at path: $path');
+          developer.log(
+            'ERROR: File for field "$fieldName" does not exist at path: $path',
+            name: 'ApiService',
+            level: 1000,
+          );
+          continue;
+        }
+
+        // Get file information
+        final fileStat = await file.stat();
+        final fileSize = fileStat.size;
+        final fileName = path.split('/').isNotEmpty
+            ? path.split('/').last
+            : 'upload';
+
+        developer.log(
+          'File "$fieldName" exists: ✓\n'
+          '  - Path: $path\n'
+          '  - Filename: $fileName\n'
+          '  - Size: ${fileSize} bytes (${(fileSize / 1024).toStringAsFixed(2)} KB)',
+          name: 'ApiService',
+        );
+
+        // Verify file size is greater than 0
+        if (fileSize == 0) {
+          invalidFiles.add('$fieldName: File is empty (0 bytes)');
+          developer.log(
+            'ERROR: File for field "$fieldName" is empty (0 bytes)',
+            name: 'ApiService',
+            level: 1000,
+          );
+          continue;
+        }
+
+        try {
+          // Create MultipartFile
+          final multipartFile = await MultipartFile.fromFile(
             path,
-            filename: path.split('/').isNotEmpty
-                ? path.split('/').last
-                : 'upload',
+            filename: fileName,
+          );
+
+          payload[fieldName] = multipartFile;
+          uploadedFiles.add('$fieldName: $fileName (${fileSize} bytes)');
+
+          developer.log(
+            'Successfully attached file "$fieldName" to payload',
+            name: 'ApiService',
+          );
+        } catch (e) {
+          invalidFiles.add('$fieldName: Failed to create MultipartFile - $e');
+          developer.log(
+            'ERROR: Failed to create MultipartFile for "$fieldName": $e',
+            name: 'ApiService',
+            level: 1000,
           );
         }
       }
 
+      // Log summary of file upload status
+      developer.log(
+        '\n=== File Upload Summary ===\n'
+        'Successfully uploaded files (${uploadedFiles.length}):\n'
+        '${uploadedFiles.isEmpty ? "  None" : uploadedFiles.map((f) => "  ✓ $f").join("\n")}\n\n'
+        'Missing/Empty files (${missingFiles.length}):\n'
+        '${missingFiles.isEmpty ? "  None" : missingFiles.map((f) => "  ✗ $f").join("\n")}\n\n'
+        'Invalid files (${invalidFiles.length}):\n'
+        '${invalidFiles.isEmpty ? "  None" : invalidFiles.map((f) => "  ✗ $f").join("\n")}\n'
+        '==========================',
+        name: 'ApiService',
+        level: invalidFiles.isNotEmpty || uploadedFiles.isEmpty ? 1000 : 500,
+      );
+
+      // Warn if critical files are missing
+      final criticalFields = [
+        'front_nid',
+        'back_nid',
+        'work_certifier',
+        'gaurantor_front_nid',
+        'gaurantor_back_nid',
+      ];
+      final missingCritical = criticalFields
+          .where((field) => !uploadedFiles.any((f) => f.startsWith(field)))
+          .toList();
+
+      if (missingCritical.isNotEmpty) {
+        developer.log(
+          'WARNING: Missing critical files: ${missingCritical.join(", ")}',
+          name: 'ApiService',
+          level: 1000,
+        );
+      }
+
       final formData = FormData.fromMap(payload);
+
+      // Log text fields summary (without sensitive data)
+      final textFieldKeys = textFields.keys.toList();
+      developer.log(
+        'Text fields in payload (${textFieldKeys.length}): ${textFieldKeys.join(", ")}',
+        name: 'ApiService',
+      );
+
+      // Log FormData structure
+      developer.log(
+        'FormData created with:\n'
+        '  - Text fields: ${formData.fields.length}\n'
+        '  - File fields: ${formData.files.length}',
+        name: 'ApiService',
+      );
+
+      // Log file details from FormData
+      for (final fileEntry in formData.files) {
+        developer.log(
+          'FormData file: ${fileEntry.key} -> ${fileEntry.value.filename} '
+          '(${fileEntry.value.length} bytes)',
+          name: 'ApiService',
+        );
+      }
+
+      developer.log(
+        'Sending POST request to /customer_verify_and_save...',
+        name: 'ApiService',
+      );
 
       final response = await _dio.post(
         '/customer_verify_and_save',
         data: formData,
       );
 
+      developer.log(
+        'API Response received:\n'
+        '  - Status Code: ${response.statusCode}\n'
+        '  - Headers: ${response.headers.map}',
+        name: 'ApiService',
+      );
+
       final dynamic raw = response.data;
       final Map<String, dynamic> data = raw is String
           ? (jsonDecode(raw) as Map<String, dynamic>)
           : (raw as Map<String, dynamic>);
+
+      developer.log(
+        'API Response parsed successfully:\n'
+        '  - Status: ${data['status']}\n'
+        '  - Message: ${data['message'] ?? "N/A"}',
+        name: 'ApiService',
+      );
+
+      developer.log(
+        '=== customer_verify_and_save API call completed ===',
+        name: 'ApiService',
+      );
+
       return data;
     } on DioException catch (e) {
+      developer.log(
+        'ERROR in customer_verify_and_save API:\n'
+        '  - Type: ${e.type}\n'
+        '  - Message: ${e.message}\n'
+        '  - Response: ${e.response?.data}\n'
+        '  - Status Code: ${e.response?.statusCode}',
+        name: 'ApiService',
+        level: 1000,
+        error: e,
+        stackTrace: e.stackTrace,
+      );
       throw _handleError(e);
+    } catch (e, stackTrace) {
+      developer.log(
+        'Unexpected ERROR in customer_verify_and_save API: $e',
+        name: 'ApiService',
+        level: 1000,
+        error: e,
+        stackTrace: stackTrace,
+      );
+      rethrow;
     }
   }
 
@@ -250,7 +437,8 @@ class ApiService {
     }
   }
 
-  static Future<List<String>> getPaymentTerms() async {
+  /// Get payment terms as a list of maps with 'id' and 'name' keys
+  static Future<List<Map<String, String>>> getPaymentTerms() async {
     try {
       final response = await _dio.post(
         '/get_month',
@@ -265,10 +453,14 @@ class ApiService {
         if (result is List) {
           // API returns list of { id, name }
           return result
+              .whereType<Map<String, dynamic>>()
               .map(
-                (e) => e is Map ? (e['name']?.toString() ?? '') : e.toString(),
+                (e) => {
+                  'id': e['id']?.toString() ?? '',
+                  'name': e['name']?.toString() ?? '',
+                },
               )
-              .where((s) => s.isNotEmpty)
+              .where((e) => e['id']!.isNotEmpty && e['name']!.isNotEmpty)
               .toList();
         }
       }
@@ -276,6 +468,12 @@ class ApiService {
     } on DioException catch (e) {
       throw _handleError(e);
     }
+  }
+
+  /// Get payment terms as a simple list of names (for backward compatibility)
+  static Future<List<String>> getPaymentTermNames() async {
+    final terms = await getPaymentTerms();
+    return terms.map((e) => e['name']!).toList();
   }
 
   static Future<Map<String, double>> getCharges() async {

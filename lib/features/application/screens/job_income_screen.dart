@@ -26,6 +26,8 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   File? _frontWorkIdImage;
   File? _backWorkIdImage;
   File? _workCertifierFile;
+  File? _bankStatementFile;
+  File? _bkashStatementFile;
 
   @override
   void initState() {
@@ -48,6 +50,8 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
 
   void _loadExistingData() {
     final jobInfo = ref.read(jobInfoProvider);
+    final appState = ref.read(applicationDataProvider);
+
     if (jobInfo != null) {
       _occupationController.text = jobInfo.occupation;
       _companyNameController.text = jobInfo.companyName;
@@ -65,6 +69,14 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
         _workCertifierFile = File(jobInfo.workCertifier);
       }
     }
+
+    // Load statement files from application state
+    if (appState.bankStatementPath != null) {
+      _bankStatementFile = File(appState.bankStatementPath!);
+    }
+    if (appState.bkashStatementPath != null) {
+      _bkashStatementFile = File(appState.bkashStatementPath!);
+    }
   }
 
   void _saveJobInfo() {
@@ -80,6 +92,14 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     );
 
     ref.read(applicationDataProvider.notifier).setJobInfo(jobInfo);
+
+    // Save statement paths to application provider
+    ref
+        .read(applicationDataProvider.notifier)
+        .setBankStatementPath(_bankStatementFile?.path);
+    ref
+        .read(applicationDataProvider.notifier)
+        .setBkashStatementPath(_bkashStatementFile?.path);
   }
 
   Future<void> _pickWorkCertifierFile() async {
@@ -91,6 +111,199 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
         _workCertifierFile = File(image.path);
       });
     }
+  }
+
+  // Methods for Bank Statement
+  Future<void> _pickBankStatementImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image != null) {
+        setState(() {
+          _bankStatementFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _captureBankStatementImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+      if (image != null) {
+        setState(() {
+          _bankStatementFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error capturing image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Methods for Bkash Statement
+  Future<void> _pickBkashStatementImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image != null) {
+        setState(() {
+          _bkashStatementFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _captureBkashStatementImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+      if (image != null) {
+        setState(() {
+          _bkashStatementFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error capturing image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Helper method to build statement upload section
+  Widget _buildStatementSection({
+    required String title,
+    required File? file,
+    required VoidCallback onPickImage,
+    required VoidCallback onCaptureImage,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: file != null ? Colors.green : Colors.grey.shade300,
+              width: file != null ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            color: file != null ? Colors.green.shade50 : Colors.white,
+          ),
+          child: Column(
+            children: [
+              if (file != null) ...[
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Selected: ${file.path.split('/').last}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      color: Colors.red,
+                      onPressed: () {
+                        setState(() {
+                          if (title.contains('Bank')) {
+                            _bankStatementFile = null;
+                          } else {
+                            _bkashStatementFile = null;
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: onPickImage,
+                      icon: const Icon(Icons.image, size: 18),
+                      label: const Text('Upload Image'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: onCaptureImage,
+                      icon: const Icon(Icons.camera_alt, size: 18),
+                      label: const Text('Capture'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Supported formats: JPG, JPEG, PNG',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -276,17 +489,83 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
+
+              // Bank Statement Section
+              _buildStatementSection(
+                title: 'Bank Statement',
+                file: _bankStatementFile,
+                onPickImage: _pickBankStatementImage,
+                onCaptureImage: _captureBankStatementImage,
+              ),
+              const SizedBox(height: 16),
+
+              // Bkash Statement Section
+              _buildStatementSection(
+                title: 'Bkash Statement',
+                file: _bkashStatementFile,
+                onPickImage: _pickBkashStatementImage,
+                onCaptureImage: _captureBkashStatementImage,
+              ),
+              const SizedBox(height: 8),
+
+              // Validation message for statements
+              if (_bankStatementFile == null && _bkashStatementFile == null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.orange.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'At least one statement (Bank or Bkash) is required',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 24),
 
               // Next Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      _saveJobInfo();
-                      context.go('/application/guarantor');
+                    // Validate form
+                    if (!_formKey.currentState!.validate()) {
+                      return;
                     }
+
+                    // Validate that at least one statement is selected
+                    if (_bankStatementFile == null &&
+                        _bkashStatementFile == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please upload at least one statement (Bank or Bkash)',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    _saveJobInfo();
+                    context.go('/application/guarantor');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,

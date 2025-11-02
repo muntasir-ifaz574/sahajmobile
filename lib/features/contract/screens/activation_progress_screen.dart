@@ -46,34 +46,7 @@ class ActivationProgressScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
 
-              // Instructions
-              const Text(
-                'Activating is in progress, please operate the activation steps and download the repayment APP on the customer\'s mobile phone',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppTheme.textSecondary,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-
-              // Guidelines Link
-              TextButton(
-                onPressed: () {
-                  // TODO: Show phone activation guidelines
-                },
-                child: const Text(
-                  'Phone activation guidelines',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
               const SizedBox(height: 40),
 
               // Action Buttons

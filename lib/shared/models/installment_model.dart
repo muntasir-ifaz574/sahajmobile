@@ -33,6 +33,7 @@ class InstallmentPlan {
   final double downPayment;
   final double downPaymentPercentage;
   final int paymentTerms;
+  final String? paymentTermId; // Payment term ID from get_month API
   final double monthlyPayment;
   final double serviceFeeRate;
   final double totalServiceFee;
@@ -47,6 +48,7 @@ class InstallmentPlan {
     required this.downPayment,
     required this.downPaymentPercentage,
     required this.paymentTerms,
+    this.paymentTermId,
     required this.monthlyPayment,
     required this.serviceFeeRate,
     required this.totalServiceFee,

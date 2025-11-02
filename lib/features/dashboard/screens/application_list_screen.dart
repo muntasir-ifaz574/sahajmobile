@@ -48,9 +48,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
   String _getStatusText(String? status) {
     switch (status) {
       case '1':
-        return 'Pending';
-      case '2':
         return 'Approved';
+      case '2':
+        return 'Pending';
       case '3':
         return 'Disapproved';
       default:
@@ -61,9 +61,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
   Color _getStatusColor(String? status) {
     switch (status) {
       case '1':
-        return AppTheme.primaryColor;
-      case '2':
         return AppTheme.successColor;
+      case '2':
+        return AppTheme.primaryColor;
       case '3':
         return AppTheme.errorColor;
       default:
@@ -163,6 +163,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
     final statusColor = _getStatusColor(status);
     final applicant = app['applicant']?.toString() ?? 'N/A';
     final telephone = app['telephone']?.toString() ?? 'N/A';
+    final paymentTearm = app['name']?.toString() ?? 'N/A';
     final supplier = app['supplier_name']?.toString() ?? 'N/A';
     final id = app['id']?.toString() ?? 'N/A';
 
@@ -213,6 +214,14 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
             const SizedBox(height: 4),
             Text(
               'Tel: $telephone',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Payment Term: $paymentTearm',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,

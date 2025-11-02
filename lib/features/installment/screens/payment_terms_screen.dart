@@ -19,6 +19,7 @@ class PaymentTermsScreen extends ConsumerStatefulWidget {
 
 class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
   String? selectedPaymentTerm;
+  String? selectedPaymentTermId; // Payment term ID from API
   String downPaymentType = 'percentage'; // 'percentage' or 'amount'
   double downPaymentValue = 0.0;
   double productPrice = 25000.0; // default; overridden in initState
@@ -29,7 +30,7 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
   double chargeLossReservePercent = 0.0;
   double chargePhoneExpense = 0.0;
 
-  List<String> paymentTerms = [];
+  List<Map<String, String>> paymentTerms = []; // List of {id, name} maps
   bool _loadingTerms = false;
   String? _termsError;
 
@@ -86,7 +87,8 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
       setState(() {
         paymentTerms = terms;
         if (paymentTerms.isNotEmpty) {
-          selectedPaymentTerm = paymentTerms.first;
+          selectedPaymentTerm = paymentTerms.first['name'];
+          selectedPaymentTermId = paymentTerms.first['id'];
           _updateDefaultDownPayment();
         }
       });
@@ -309,6 +311,7 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
                       paymentTerms: paymentFrequency == 'weekly'
                           ? weeklyRepaymentCount
                           : months,
+                      paymentTermId: selectedPaymentTermId, // Store the payment term ID
                       monthlyPayment: paymentAmount,
                       serviceFeeRate: chargeUpchargePercent,
                       totalServiceFee:
@@ -423,11 +426,20 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
           items: paymentTerms.map((term) {
-            return DropdownMenuItem(value: term, child: Text(term));
+            return DropdownMenuItem(
+              value: term['name'],
+              child: Text(term['name']!),
+            );
           }).toList(),
           onChanged: (value) {
             setState(() {
               selectedPaymentTerm = value;
+              // Find and store the corresponding ID
+              final selectedTerm = paymentTerms.firstWhere(
+                (term) => term['name'] == value,
+                orElse: () => paymentTerms.first,
+              );
+              selectedPaymentTermId = selectedTerm['id'];
             });
             _updateDefaultDownPayment();
           },

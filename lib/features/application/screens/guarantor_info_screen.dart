@@ -52,35 +52,152 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
   void _loadExistingData() {
     final guarantorInfo = ref.read(guarantorInfoProvider);
     if (guarantorInfo != null) {
-      _nidController.text = guarantorInfo.nidNumber;
-      _nameController.text = guarantorInfo.fullName;
-      _phoneController.text = guarantorInfo.phoneNumber;
-      _dateController.text = DateFormat(
-        'd MMM yyyy',
-      ).format(guarantorInfo.dateOfBirth);
-      _selectedDate = guarantorInfo.dateOfBirth;
-      _relationship = guarantorInfo.relationship;
-      _maritalStatus = guarantorInfo.maritalStatus;
-      _frontImagePath = guarantorInfo.nidFrontImage;
-      _backImagePath = guarantorInfo.nidBackImage;
+      setState(() {
+        _nidController.text = guarantorInfo.nidNumber;
+        _nameController.text = guarantorInfo.fullName;
+        _phoneController.text = guarantorInfo.phoneNumber;
+        _dateController.text = DateFormat(
+          'd MMM yyyy',
+        ).format(guarantorInfo.dateOfBirth);
+        _selectedDate = guarantorInfo.dateOfBirth;
+        _relationship = guarantorInfo.relationship;
+        _maritalStatus = guarantorInfo.maritalStatus;
+        _frontImagePath = guarantorInfo.nidFrontImage;
+        _backImagePath = guarantorInfo.nidBackImage;
+      });
     }
   }
 
-  void _saveGuarantorInfo() {
-    if (_selectedDate == null || _relationship == null || _maritalStatus == null) return;
+  String? _saveGuarantorInfo() {
+    // Validate all required fields are present
+    if (_maritalStatus == null || _maritalStatus!.isEmpty) {
+      return 'Please select Marital Status';
+    }
 
-    final guarantorInfo = GuarantorInfo(
-      relationship: _relationship!,
-      nidNumber: _nidController.text.trim(),
-      fullName: _nameController.text.trim(),
-      dateOfBirth: _selectedDate!,
-      phoneNumber: _phoneController.text.trim(),
-      maritalStatus: _maritalStatus!,
-      nidFrontImage: _frontImagePath,
-      nidBackImage: _backImagePath,
-    );
+    if (_relationship == null || _relationship!.isEmpty) {
+      return 'Please select Guarantor Relationship';
+    }
 
-    ref.read(applicationDataProvider.notifier).setGuarantorInfo(guarantorInfo);
+    // If _selectedDate is null but dateController has text, try to parse it
+    DateTime? dateToUse = _selectedDate;
+    if (dateToUse == null && _dateController.text.isNotEmpty) {
+      try {
+        // Try parsing the formatted date (e.g., "18 Feb 1998")
+        dateToUse = DateFormat('d MMM yyyy').parse(_dateController.text.trim());
+      } catch (e) {
+        // If that fails, try other formats
+        try {
+          dateToUse = DateTime.parse(_dateController.text.trim());
+        } catch (e2) {
+          // Try DD/MM/YYYY format
+          final datePattern = RegExp(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})');
+          final match = datePattern.firstMatch(_dateController.text.trim());
+          if (match != null) {
+            try {
+              final day = int.parse(match.group(1)!);
+              final month = int.parse(match.group(2)!);
+              final year = int.parse(match.group(3)!);
+              dateToUse = DateTime(year, month, day);
+            } catch (e3) {
+              // Still null
+            }
+          }
+        }
+      }
+
+      // If we successfully parsed, update _selectedDate for next time
+      if (dateToUse != null) {
+        setState(() {
+          _selectedDate = dateToUse;
+        });
+      }
+    }
+
+    if (dateToUse == null) {
+      return 'Please select Date of Birth';
+    }
+
+    final nidNumber = _nidController.text.trim();
+    final fullName = _nameController.text.trim();
+    final phoneNumber = _phoneController.text.trim();
+
+    // Validate text fields are not empty
+    if (nidNumber.isEmpty) {
+      return 'Please enter Guarantor\'s NID Number';
+    }
+
+    if (fullName.isEmpty) {
+      return 'Please enter Guarantor\'s Full Name';
+    }
+
+    if (phoneNumber.isEmpty) {
+      return 'Please enter Guarantor\'s Mobile Number';
+    }
+
+    // Validate NID number length
+    if (nidNumber.length < 10 || nidNumber.length > 17) {
+      return 'NID number must be 10-17 digits';
+    }
+
+    // Validate name length
+    if (fullName.length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+
+    // Validate phone number length
+    if (phoneNumber.length < 11) {
+      return 'Phone number must be at least 11 digits';
+    }
+
+    try {
+      // Ensure marital status is not empty and trimmed
+      final maritalStatusValue = _maritalStatus?.trim() ?? '';
+      if (maritalStatusValue.isEmpty) {
+        return 'Please select Marital Status';
+      }
+
+      // Ensure relationship is not empty and trimmed
+      final relationshipValue = _relationship?.trim() ?? '';
+      if (relationshipValue.isEmpty) {
+        return 'Please select Guarantor Relationship';
+      }
+
+      // dateToUse is guaranteed to be non-null here due to validation above
+      final guarantorInfo = GuarantorInfo(
+        relationship: relationshipValue,
+        nidNumber: nidNumber,
+        fullName: fullName,
+        dateOfBirth: dateToUse,
+        phoneNumber: phoneNumber,
+        maritalStatus: maritalStatusValue,
+        nidFrontImage: _frontImagePath,
+        nidBackImage: _backImagePath,
+      );
+
+      ref
+          .read(applicationDataProvider.notifier)
+          .setGuarantorInfo(guarantorInfo);
+
+      // Clear any error message on successful save
+      setState(() {
+        _errorMessage = null;
+      });
+
+      return null; // null means success
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to save guarantor information: $e';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return 'Failed to save: $e';
+    }
   }
 
   String _formatDateFromOCR(String dateString) {
@@ -196,19 +313,83 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
           _dateController.text = formattedDate;
 
           // Try to parse the date for the date picker
+          DateTime? parsedDate;
+
+          // First try: Standard ISO format
           try {
-            final parsedDate = DateTime.parse(guarantorInfo.dateOfBirth);
-            _selectedDate = parsedDate;
+            parsedDate = DateTime.parse(guarantorInfo.dateOfBirth);
           } catch (e) {
-            // If parsing fails, try alternative formats
-            final datePattern = RegExp(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})');
-            final match = datePattern.firstMatch(guarantorInfo.dateOfBirth);
-            if (match != null) {
-              final day = int.parse(match.group(1)!);
-              final month = int.parse(match.group(2)!);
-              final year = int.parse(match.group(3)!);
-              _selectedDate = DateTime(year, month, day);
+            // Second try: DD/MM/YYYY or DD-MM-YYYY format
+            final datePattern1 = RegExp(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})');
+            final match1 = datePattern1.firstMatch(guarantorInfo.dateOfBirth);
+            if (match1 != null) {
+              try {
+                final day = int.parse(match1.group(1)!);
+                final month = int.parse(match1.group(2)!);
+                final year = int.parse(match1.group(3)!);
+                parsedDate = DateTime(year, month, day);
+              } catch (e) {
+                // Continue to next attempt
+              }
             }
+
+            // Third try: Try parsing the formatted date text (e.g., "18 Feb 1998")
+            if (parsedDate == null && formattedDate.isNotEmpty) {
+              try {
+                parsedDate = DateFormat('d MMM yyyy').parse(formattedDate);
+              } catch (e) {
+                // Continue to next attempt
+              }
+            }
+
+            // Fourth try: Try MM/DD/YYYY format (alternative order)
+            if (parsedDate == null) {
+              final datePattern2 = RegExp(r'(\d{2})[/-](\d{2})[/-](\d{4})');
+              final match2 = datePattern2.firstMatch(guarantorInfo.dateOfBirth);
+              if (match2 != null) {
+                try {
+                  final month = int.parse(match2.group(1)!);
+                  final day = int.parse(match2.group(2)!);
+                  final year = int.parse(match2.group(3)!);
+                  parsedDate = DateTime(year, month, day);
+                } catch (e) {
+                  // Continue to next attempt
+                }
+              }
+            }
+
+            // Fifth try: Try to extract date from any numeric format
+            if (parsedDate == null) {
+              final allNumbers = RegExp(
+                r'\d+',
+              ).allMatches(guarantorInfo.dateOfBirth);
+              if (allNumbers.length >= 3) {
+                final numbers = allNumbers
+                    .map((m) => int.parse(m.group(0)!))
+                    .toList();
+                try {
+                  // Try different interpretations: YYYY-MM-DD, DD-MM-YYYY, etc.
+                  if (numbers[0] > 31 && numbers.length >= 3) {
+                    // First number is year
+                    parsedDate = DateTime(numbers[0], numbers[1], numbers[2]);
+                  } else if (numbers.length >= 3) {
+                    // Try DD-MM-YYYY or MM-DD-YYYY
+                    if (numbers[1] <= 12) {
+                      parsedDate = DateTime(numbers[2], numbers[1], numbers[0]);
+                    } else {
+                      parsedDate = DateTime(numbers[2], numbers[0], numbers[1]);
+                    }
+                  }
+                } catch (e) {
+                  // If all parsing fails, we'll leave it null and user can select manually
+                }
+              }
+            }
+          }
+
+          // Set the parsed date if successful
+          if (parsedDate != null) {
+            _selectedDate = parsedDate;
           }
         }
 
@@ -284,9 +465,11 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                   DropdownMenuItem(value: 'Widowed', child: Text('Widowed')),
                 ],
                 onChanged: (value) {
-                  setState(() {
-                    _maritalStatus = value;
-                  });
+                  if (value != null) {
+                    setState(() {
+                      _maritalStatus = value.trim();
+                    });
+                  }
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -312,9 +495,11 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                   DropdownMenuItem(value: 'Other', child: Text('Other')),
                 ],
                 onChanged: (value) {
-                  setState(() {
-                    _relationship = value;
-                  });
+                  if (value != null) {
+                    setState(() {
+                      _relationship = value.trim();
+                    });
+                  }
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -513,8 +698,22 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
-                          _saveGuarantorInfo();
-                          context.go('/application/machine');
+                          // Save the information - returns null if successful, error message if failed
+                          final errorMessage = _saveGuarantorInfo();
+
+                          if (errorMessage == null) {
+                            // Navigate to next screen on successful save
+                            context.go('/application/machine');
+                          } else {
+                            // Show specific error message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(errorMessage),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(

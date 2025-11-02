@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signature/signature.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/providers/application_provider.dart';
 
 class OnlineContractScreen extends ConsumerStatefulWidget {
   const OnlineContractScreen({super.key});
@@ -59,11 +63,29 @@ class _OnlineContractScreenState extends ConsumerState<OnlineContractScreen> {
     }
 
     try {
-      // Export signature as image
-      await _signatureController.toPngBytes();
+      // Export signature as PNG bytes
+      final pngBytes = await _signatureController.toPngBytes();
+      if (pngBytes == null) {
+        throw Exception('Failed to export signature as image');
+      }
 
-      // Here you would typically save the signature data
-      // For now, we'll just show a success message
+      // Get temporary directory
+      final tempDir = await getTemporaryDirectory();
+
+      // Generate unique filename
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'customer_signature_$timestamp.png';
+      final filePath = path.join(tempDir.path, fileName);
+
+      // Save signature to file
+      final file = File(filePath);
+      await file.writeAsBytes(pngBytes);
+
+      // Store signature path in application provider
+      ref
+          .read(applicationDataProvider.notifier)
+          .setCustomerSignaturePath(filePath);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

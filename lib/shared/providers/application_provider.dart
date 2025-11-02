@@ -19,6 +19,9 @@ class ApplicationDataState {
   final AddressInfo? addressInfo;
   final JobInfo? jobInfo;
   final GuarantorInfo? guarantorInfo;
+  final String? customerSignaturePath;
+  final String? bkashStatementPath;
+  final String? bankStatementPath;
   final bool isLoading;
   final String? error;
 
@@ -30,6 +33,9 @@ class ApplicationDataState {
     this.addressInfo,
     this.jobInfo,
     this.guarantorInfo,
+    this.customerSignaturePath,
+    this.bkashStatementPath,
+    this.bankStatementPath,
     this.isLoading = false,
     this.error,
   });
@@ -42,6 +48,9 @@ class ApplicationDataState {
     AddressInfo? addressInfo,
     JobInfo? jobInfo,
     GuarantorInfo? guarantorInfo,
+    String? customerSignaturePath,
+    String? bkashStatementPath,
+    String? bankStatementPath,
     bool? isLoading,
     String? error,
   }) {
@@ -53,6 +62,10 @@ class ApplicationDataState {
       addressInfo: addressInfo ?? this.addressInfo,
       jobInfo: jobInfo ?? this.jobInfo,
       guarantorInfo: guarantorInfo ?? this.guarantorInfo,
+      customerSignaturePath:
+          customerSignaturePath ?? this.customerSignaturePath,
+      bkashStatementPath: bkashStatementPath ?? this.bkashStatementPath,
+      bankStatementPath: bankStatementPath ?? this.bankStatementPath,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -72,6 +85,10 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
     String? bankStatementPath,
     String? customerSignaturePath,
   }) async {
+    // Use provided paths or fallback to state paths
+    final finalBkashPath = bkashStatementPath ?? state.bkashStatementPath;
+    final finalBankPath = bankStatementPath ?? state.bankStatementPath;
+    final finalSignaturePath = customerSignaturePath ?? state.customerSignaturePath;
     if (!isApplicationComplete()) {
       final List<String> missing = [];
       if (state.personalInfo == null) missing.add('Personal information');
@@ -114,7 +131,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'store': shopId,
         'brand': product.brand,
         'model': product.model,
-        'months_repay': plan.paymentTerms.toString(),
+        'months_repay': plan.paymentTermId,
         'cellphone_MRP': product.price.toString(),
         'discountRate': '0',
         'discount_percent': '0',
@@ -176,14 +193,14 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
 
       // File fields (paths)
       final Map<String, String?> filePaths = {
-        'work_certifier': job.workIdFrontImage,
+        // 'work_certifier': job.workIdFrontImage,
         'front_nid': personal.nidFrontImage,
         'back_nid': personal.nidBackImage,
         'gaurantor_front_nid': guarantor.nidFrontImage,
         'gaurantor_back_nid': guarantor.nidBackImage,
-        'bKash_statement': bkashStatementPath,
-        'bank_statement': bankStatementPath,
-        'customer_signature': customerSignaturePath,
+        'bKash_statement': finalBkashPath,
+        'bank_statement': finalBankPath,
+        'customer_signature': finalSignaturePath,
       };
 
       final result = await ApiService.submitApplication(
@@ -258,6 +275,18 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
     state = state.copyWith(guarantorInfo: guarantorInfo, error: null);
   }
 
+  void setCustomerSignaturePath(String? signaturePath) {
+    state = state.copyWith(customerSignaturePath: signaturePath, error: null);
+  }
+
+  void setBkashStatementPath(String? path) {
+    state = state.copyWith(bkashStatementPath: path, error: null);
+  }
+
+  void setBankStatementPath(String? path) {
+    state = state.copyWith(bankStatementPath: path, error: null);
+  }
+
   void setLoading(bool loading) {
     state = state.copyWith(isLoading: loading);
   }
@@ -288,7 +317,13 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
   }
 
   bool isGuarantorInfoComplete() {
-    return state.guarantorInfo != null;
+    if (state.guarantorInfo == null) return false;
+    final guarantor = state.guarantorInfo!;
+    return guarantor.relationship.isNotEmpty &&
+        guarantor.nidNumber.isNotEmpty &&
+        guarantor.fullName.isNotEmpty &&
+        guarantor.phoneNumber.isNotEmpty &&
+        guarantor.maritalStatus.isNotEmpty;
   }
 
   bool isMachineInfoComplete() {
