@@ -135,7 +135,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'phone_lock_expense': '0',
         'net_repayment': plan.totalOutstanding.toString(),
         'net_net_moic': plan.totalOutstanding.toString(),
-        'week_type': 'monthly',
+        'week_type': plan.paymentFrequency,
         'transaction_charge': '0',
         'installmentAmount': plan.monthlyPayment.toString(),
         'installmentStartDate': DateTime.now()
@@ -378,6 +378,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
       serviceFeeRate: plan.serviceFeeRate,
       totalServiceFee: plan.totalServiceFee,
       totalOutstanding: plan.totalOutstanding,
+      paymentFrequency: plan.paymentFrequency,
     );
   }
 }
@@ -392,6 +393,7 @@ class PaymentSummary {
   final double serviceFeeRate;
   final double totalServiceFee;
   final double totalOutstanding;
+  final String paymentFrequency;
 
   const PaymentSummary({
     required this.orderAmount,
@@ -402,6 +404,7 @@ class PaymentSummary {
     required this.serviceFeeRate,
     required this.totalServiceFee,
     required this.totalOutstanding,
+    this.paymentFrequency = 'monthly',
   });
 }
 

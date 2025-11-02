@@ -38,6 +38,7 @@ class InstallmentPlan {
   final double totalServiceFee;
   final double totalOutstanding;
   final List<RepaymentTerm> repaymentTerms;
+  final String paymentFrequency; // 'monthly' or 'weekly'
 
   const InstallmentPlan({
     required this.id,
@@ -51,6 +52,7 @@ class InstallmentPlan {
     required this.totalServiceFee,
     required this.totalOutstanding,
     required this.repaymentTerms,
+    this.paymentFrequency = 'monthly', // Default to monthly for backward compatibility
   });
 
   factory InstallmentPlan.fromJson(Map<String, dynamic> json) =>

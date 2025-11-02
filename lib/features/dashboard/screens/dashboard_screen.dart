@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/storage_service.dart';
@@ -140,24 +141,82 @@ class DashboardScreen extends ConsumerWidget {
               },
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.dashboard_outlined),
-              title: const Text('Dashboard'),
-              onTap: () => context.pop(),
+            Expanded(
+              child: ListView(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.dashboard_outlined),
+                    title: const Text('Dashboard'),
+                    onTap: () => context.pop(),
+                  ),
+                  const Divider(),
+                  ExpansionTile(
+                    leading: const Icon(Icons.support_agent),
+                    title: const Text('Contacts'),
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.email_outlined, size: 20),
+                        title: const Text('Email'),
+                        subtitle: const Text('info@sahajmobile.com'),
+                        onTap: () => _launchEmail('info@sahajmobile.com'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.phone_outlined, size: 20),
+                        title: const Text('Phone 1'),
+                        subtitle: const Text('+880 199 1160538'),
+                        onTap: () => _launchPhone('+8801991160538'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.phone_outlined, size: 20),
+                        title: const Text('Phone 2'),
+                        subtitle: const Text('+880 9666753953'),
+                        onTap: () => _launchPhone('+8809666753953'),
+                      ),
+                    ],
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.location_on_outlined),
+                    title: const Text('Address'),
+                    subtitle: const Text(
+                      'Apartments # 4C, RUBAIYAT\nHouse #15, Road #24 CWN(C)\nGulshan-2, Dhaka-1212',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    isThreeLine: true,
+                    onTap: () =>
+                        _launchMap('https://maps.app.goo.gl/gqrdASTVKhJmnqdg9'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('About'),
+                    onTap: () => _showAboutDialog(context),
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.policy_outlined),
+                    title: const Text('Privacy Policy'),
+                    onTap: () => _launchUrl(
+                      'https://sahajmobile.org/assets/files/Privacy-Policy.pdf',
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.receipt_long_outlined),
+                    title: const Text('Refund Policy'),
+                    onTap: () => _launchUrl(
+                      'https://sahajmobile.org/assets/files/Refund-Policy.pdf',
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('Terms and Conditions'),
+                    onTap: () => _launchUrl(
+                      'https://sahajmobile.org/assets/files/Terms-Conditions.pdf',
+                    ),
+                  ),
+                ],
+              ),
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.support_agent),
-              title: const Text('Support'),
-              subtitle: const Text('help@sahajmobile.org'),
-              onTap: () {},
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('About'),
-              onTap: () {},
-            ),
-            const Spacer(),
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.errorColor),
               title: const Text('Logout'),
@@ -169,6 +228,83 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _launchEmail(String email) async {
+    final Uri emailUri = Uri(scheme: 'mailto', path: email);
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // Handle error if email app is not available
+      debugPrint('Error launching email: $e');
+    }
+  }
+
+  Future<void> _launchPhone(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // Handle error if phone app is not available
+      debugPrint('Error launching phone: $e');
+    }
+  }
+
+  Future<void> _launchMap(String url) async {
+    final Uri mapUri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(mapUri)) {
+        await launchUrl(mapUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // Handle error if maps app is not available
+      debugPrint('Error launching map: $e');
+    }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // Handle error if browser is not available
+      debugPrint('Error launching URL: $e');
+    }
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('About SahajMobile'),
+          content: SingleChildScrollView(
+            child: Text(
+              'At SahajMobile, we are driven by the vision of making the latest mobile phone technology accessible to everyone.\n\n'
+              'Founded in 2023, our company has established itself as an innovative financial service provider for the mobile technology sector of Bangladesh. We specialize in offering customer-centric Equated Monthly Installment (EMI) plans, enabling a wider demographic to own smartphones while reducing the burden of upfront costs.\n\n'
+              'Our approach is rooted in understanding the needs of our customers, many of whom are entering the digital world for the first time. By removing financial barriers, we aim to empower individuals and communities with the tools necessary for embracing the digital era.',
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 

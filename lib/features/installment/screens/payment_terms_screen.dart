@@ -33,7 +33,13 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
   bool _loadingTerms = false;
   String? _termsError;
 
+  // Payment frequency: 'monthly' or 'weekly'
+  String paymentFrequency = 'monthly';
+  int weeklyRepaymentCount = 12; // Default, will be calculated based on months
+
   final TextEditingController _downPaymentController = TextEditingController();
+  final TextEditingController _weeklyRepaymentController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -121,7 +127,25 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
       double percentage = _getDefaultDownPaymentPercentage(months);
       downPaymentValue = percentage;
       _downPaymentController.text = percentage.toStringAsFixed(1);
+
+      // Update weekly repayment count (default: months * 4 weeks)
+      weeklyRepaymentCount = months * 4;
+      _weeklyRepaymentController.text = weeklyRepaymentCount.toString();
     }
+  }
+
+  void _updateWeeklyRepaymentCount(String value) {
+    if (value.isEmpty) {
+      setState(() {
+        weeklyRepaymentCount = 0;
+      });
+      return;
+    }
+
+    int inputValue = int.tryParse(value) ?? 0;
+    setState(() {
+      weeklyRepaymentCount = inputValue;
+    });
   }
 
   double _getDefaultDownPaymentPercentage(int months) {
@@ -194,17 +218,37 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
             const SizedBox(height: 24),
 
             // Payment Summary
-            if (selectedPaymentTerm != null && downPaymentValue > 0)
+            if (selectedPaymentTerm != null &&
+                downPaymentValue > 0 &&
+                (paymentFrequency == 'monthly' ||
+                    (paymentFrequency == 'weekly' && weeklyRepaymentCount > 0)))
               _buildPaymentSummary(),
 
             const SizedBox(height: 40),
 
             // Confirm Button
-            if (selectedPaymentTerm != null && downPaymentValue > 0)
+            if (selectedPaymentTerm != null &&
+                downPaymentValue > 0 &&
+                (paymentFrequency == 'monthly' ||
+                    (paymentFrequency == 'weekly' && weeklyRepaymentCount > 0)))
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
+                    // Validate weekly repayment count if weekly is selected
+                    if (paymentFrequency == 'weekly' &&
+                        weeklyRepaymentCount <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please enter a valid number of weekly repayments',
+                          ),
+                          backgroundColor: AppTheme.errorColor,
+                        ),
+                      );
+                      return;
+                    }
+
                     final double downPaymentAmount = _getDownPaymentAmount();
                     final double upchargeAmount =
                         (productPrice * chargeUpchargePercent) / 100.0;
@@ -222,7 +266,14 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
                     final int months = int.parse(
                       selectedPaymentTerm!.split(' ')[0],
                     );
-                    final double monthlyPayment = customerRepayment / months;
+
+                    // Calculate payment based on frequency
+                    double paymentAmount;
+                    if (paymentFrequency == 'weekly') {
+                      paymentAmount = customerRepayment / weeklyRepaymentCount;
+                    } else {
+                      paymentAmount = customerRepayment / months;
+                    }
 
                     // Save product information to provider
                     final existingProduct = ref.read(selectedProductProvider);
@@ -255,13 +306,16 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
                       orderAmount: productPrice,
                       downPayment: downPaymentAmount,
                       downPaymentPercentage: _getDownPaymentPercentage(),
-                      paymentTerms: months,
-                      monthlyPayment: monthlyPayment,
+                      paymentTerms: paymentFrequency == 'weekly'
+                          ? weeklyRepaymentCount
+                          : months,
+                      monthlyPayment: paymentAmount,
                       serviceFeeRate: chargeUpchargePercent,
                       totalServiceFee:
                           upchargeAmount + lossReserveAmount + bkashCalculated,
                       totalOutstanding: customerRepayment,
                       repaymentTerms: [],
+                      paymentFrequency: paymentFrequency,
                     );
                     ref
                         .read(applicationDataProvider.notifier)
@@ -271,11 +325,15 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
                       '/installment/confirm',
                       extra: {
                         'paymentTerm': selectedPaymentTerm,
+                        'paymentFrequency': paymentFrequency,
                         'totalPrice': productPrice,
                         'downPayment': downPaymentAmount,
                         'totalOutstanding': customerRepayment,
-                        'monthlyPayment': monthlyPayment,
-                        'months': months,
+                        'paymentAmount': paymentAmount,
+                        'weeklyRepaymentCount': paymentFrequency == 'weekly'
+                            ? weeklyRepaymentCount
+                            : null,
+                        'months': paymentFrequency == 'monthly' ? months : null,
                       },
                     );
                   },
@@ -388,6 +446,70 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
               style: const TextStyle(color: Colors.red),
             ),
           ),
+
+        if (selectedPaymentTerm != null) ...[
+          const SizedBox(height: 24),
+
+          // Payment Frequency Selection
+          const Text(
+            'Payment Frequency',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<String>(
+                  title: const Text('Monthly'),
+                  value: 'monthly',
+                  groupValue: paymentFrequency,
+                  onChanged: (value) {
+                    setState(() {
+                      paymentFrequency = value!;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<String>(
+                  title: const Text('Weekly'),
+                  value: 'weekly',
+                  groupValue: paymentFrequency,
+                  onChanged: (value) {
+                    setState(() {
+                      paymentFrequency = value!;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+
+          // Weekly Repayment Count Input (only show if weekly is selected)
+          if (paymentFrequency == 'weekly') ...[
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _weeklyRepaymentController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Number of Weekly Repayments',
+                hintText: 'Enter number of repayments',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                helperText:
+                    'Default is ${selectedPaymentTerm != null ? (int.parse(selectedPaymentTerm!.split(' ')[0]) * 4) : 12} weeks (months × 4)',
+              ),
+              onChanged: _updateWeeklyRepaymentCount,
+            ),
+          ],
+        ],
 
         const SizedBox(height: 16),
 
@@ -510,7 +632,16 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
     // Per rule: due before EMI is only price - down payment (no fees yet)
     final double customerDueBeforeEmi = productPrice - downPaymentAmount;
     final int months = int.parse(selectedPaymentTerm!.split(' ')[0]);
-    final double monthlyPayment = customerRepayment / months;
+
+    // Calculate payment based on frequency
+    double paymentAmount;
+    if (paymentFrequency == 'weekly') {
+      paymentAmount = weeklyRepaymentCount > 0
+          ? customerRepayment / weeklyRepaymentCount
+          : 0;
+    } else {
+      paymentAmount = customerRepayment / months;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -551,8 +682,17 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
           const Divider(),
           _buildSummaryRow('Payment Term', selectedPaymentTerm!),
           _buildSummaryRow(
-            'Monthly Payment',
-            'TK ${monthlyPayment.toStringAsFixed(0)}',
+            'Payment Frequency',
+            paymentFrequency == 'weekly' ? 'Weekly' : 'Monthly',
+          ),
+          if (paymentFrequency == 'weekly')
+            _buildSummaryRow(
+              'Number of Repayments',
+              '$weeklyRepaymentCount weeks',
+            ),
+          _buildSummaryRow(
+            paymentFrequency == 'weekly' ? 'Weekly Payment' : 'Monthly Payment',
+            'TK ${paymentAmount.toStringAsFixed(0)}',
           ),
         ],
       ),
@@ -615,6 +755,7 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
   @override
   void dispose() {
     _downPaymentController.dispose();
+    _weeklyRepaymentController.dispose();
     super.dispose();
   }
 }

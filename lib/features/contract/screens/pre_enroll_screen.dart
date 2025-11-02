@@ -247,9 +247,11 @@ class PreEnrollScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
 
-                    // Monthly Payment
+                    // Payment (Monthly/Weekly)
                     _buildPaymentRow(
-                      'Monthly Payment',
+                      paymentSummary.paymentFrequency == 'weekly'
+                          ? 'Weekly Payment'
+                          : 'Monthly Payment',
                       '৳${paymentSummary.monthlyPayment.toStringAsFixed(0)}',
                     ),
                     const SizedBox(height: 8),

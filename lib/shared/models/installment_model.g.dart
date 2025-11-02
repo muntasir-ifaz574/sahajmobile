@@ -41,6 +41,7 @@ InstallmentPlan _$InstallmentPlanFromJson(Map<String, dynamic> json) =>
       repaymentTerms: (json['repaymentTerms'] as List<dynamic>)
           .map((e) => RepaymentTerm.fromJson(e as Map<String, dynamic>))
           .toList(),
+      paymentFrequency: json['paymentFrequency'] as String? ?? 'monthly',
     );
 
 Map<String, dynamic> _$InstallmentPlanToJson(InstallmentPlan instance) =>
@@ -56,6 +57,7 @@ Map<String, dynamic> _$InstallmentPlanToJson(InstallmentPlan instance) =>
       'totalServiceFee': instance.totalServiceFee,
       'totalOutstanding': instance.totalOutstanding,
       'repaymentTerms': instance.repaymentTerms,
+      'paymentFrequency': instance.paymentFrequency,
     };
 
 RepaymentTerm _$RepaymentTermFromJson(Map<String, dynamic> json) =>

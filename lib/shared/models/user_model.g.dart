@@ -43,8 +43,6 @@ Map<String, dynamic> _$LoginRequestToJson(LoginRequest instance) =>
       'password': instance.password,
     };
 
-// Removed: LoginResponse JSON serialization is unused after token removal
-
 CustomerLoginResult _$CustomerLoginResultFromJson(Map<String, dynamic> json) =>
     CustomerLoginResult(
       id: json['id'] as String,
@@ -77,5 +75,5 @@ Map<String, dynamic> _$CustomerLoginResponseToJson(
   'response': instance.response,
   'message': instance.message,
   'status': instance.status,
-  'result': instance.result.toJson(),
+  'result': instance.result,
 };

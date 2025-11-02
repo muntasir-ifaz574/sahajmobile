@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -46,6 +48,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
   }
 
   void _login() {
@@ -195,19 +208,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     Expanded(
                       child: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(
+                        text: TextSpan(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,
                           ),
                           children: [
-                            TextSpan(text: 'I have read and agree '),
+                            const TextSpan(text: 'I have read and agree to '),
                             TextSpan(
-                              text: 'Terms of Service, Privacy Policy',
-                              style: TextStyle(
+                              text: 'Terms of Service',
+                              style: const TextStyle(
                                 color: AppTheme.primaryColor,
                                 fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _launchUrl(
+                                  'https://sahajmobile.org/assets/files/Terms-Conditions.pdf',
+                                ),
+                            ),
+                            const TextSpan(
+                              text: ' and ',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Privacy Policy',
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _launchUrl(
+                                  'https://sahajmobile.org/assets/files/Privacy-Policy.pdf',
+                                ),
                             ),
                           ],
                         ),

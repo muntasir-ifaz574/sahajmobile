@@ -41,6 +41,8 @@ class ConfirmInformationScreen extends ConsumerWidget {
     final displayMonthlyPayment =
         monthlyPayment ?? installmentPlan?.monthlyPayment ?? 0.0;
     final displayMonths = months ?? installmentPlan?.paymentTerms ?? 0;
+    final displayPaymentFrequency =
+        installmentPlan?.paymentFrequency ?? 'monthly';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -72,6 +74,7 @@ class ConfirmInformationScreen extends ConsumerWidget {
               displayTotalPrice: displayTotalPrice,
               displayDownPayment: displayDownPayment,
               displayTotalOutstanding: displayTotalOutstanding,
+              paymentFrequency: displayPaymentFrequency,
             ),
 
             const SizedBox(height: 24),
@@ -118,45 +121,87 @@ class ConfirmInformationScreen extends ConsumerWidget {
     required double displayTotalPrice,
     required double displayDownPayment,
     required double displayTotalOutstanding,
+    required String paymentFrequency,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Summary Details',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.summarize_outlined,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Summary Details',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          _buildDetailRow('Payment Term', paymentTerm ?? '-'),
-          _buildDetailRow('Repayment Options', 'By Month'),
           _buildDetailRow(
-            'Total Price',
-            displayTotalPrice > 0
+            icon: Icons.calendar_today_outlined,
+            label: 'Payment Term',
+            value: paymentTerm ?? '-',
+          ),
+          const Divider(height: 24),
+          _buildDetailRow(
+            icon: Icons.payment_outlined,
+            label: 'Repayment Options',
+            value: paymentFrequency == 'weekly' ? 'By Week' : 'By Month',
+          ),
+          const Divider(height: 24),
+          _buildDetailRow(
+            icon: Icons.price_check_outlined,
+            label: 'Total Price',
+            value: displayTotalPrice > 0
                 ? 'TK ${displayTotalPrice.toStringAsFixed(0)}'
                 : '-',
+            highlight: true,
           ),
+          const Divider(height: 24),
           _buildDetailRow(
-            'Down Payment',
-            displayDownPayment > 0
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Down Payment',
+            value: displayDownPayment > 0
                 ? 'TK ${displayDownPayment.toStringAsFixed(0)}'
                 : '-',
           ),
+          const Divider(height: 24),
           _buildDetailRow(
-            'Total Outstanding',
-            displayTotalOutstanding > 0
+            icon: Icons.trending_up_outlined,
+            label: 'Total Outstanding',
+            value: displayTotalOutstanding > 0
                 ? 'TK ${displayTotalOutstanding.toStringAsFixed(0)}'
                 : '-',
+            highlight: true,
           ),
         ],
       ),
@@ -168,91 +213,230 @@ class ConfirmInformationScreen extends ConsumerWidget {
     required double displayMonthlyPayment,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Repayment Plan',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.schedule_outlined,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Repayment Plan',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
-          Text(
-            displayMonths > 0
-                ? 'Total $displayMonths terms'
-                : 'Repayment terms',
-            style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              displayMonths > 0
+                  ? 'Total $displayMonths ${displayMonths == 1 ? 'term' : 'terms'}'
+                  : 'Repayment terms',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryColor,
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // Repayment terms list (show all terms)
-          ...List.generate(displayMonths, (index) {
-            final dueDate = DateTime.now().add(
-              Duration(days: 30 * (index + 1)),
-            );
-            final monthNames = [
-              'Jan',
-              'Feb',
-              'Mar',
-              'Apr',
-              'May',
-              'Jun',
-              'Jul',
-              'Aug',
-              'Sep',
-              'Oct',
-              'Nov',
-              'Dec',
-            ];
-            final formattedDate =
-                '${monthNames[dueDate.month - 1]} ${dueDate.day} ${dueDate.year}';
-            final termNumber = index + 1;
+          if (displayMonths > 0)
+            ...List.generate(displayMonths, (index) {
+              final dueDate = DateTime.now().add(
+                Duration(days: 30 * (index + 1)),
+              );
+              final monthNames = [
+                'Jan',
+                'Feb',
+                'Mar',
+                'Apr',
+                'May',
+                'Jun',
+                'Jul',
+                'Aug',
+                'Sep',
+                'Oct',
+                'Nov',
+                'Dec',
+              ];
+              final formattedDate =
+                  '${monthNames[dueDate.month - 1]} ${dueDate.day}, ${dueDate.year}';
+              final termNumber = index + 1;
+              final isLast = index == displayMonths - 1;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              return Column(
                 children: [
-                  Text(
-                    '$formattedDate ${displayMonthlyPayment > 0 ? 'TK ${displayMonthlyPayment.toStringAsFixed(0)}' : ''} $termNumber${_getOrdinalSuffix(termNumber)} term',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textSecondary,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              termNumber.toString(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$termNumber${_getOrdinalSuffix(termNumber)} Installment',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                formattedDate,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (displayMonthlyPayment > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'TK ${displayMonthlyPayment.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
+                  if (!isLast)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Colors.grey.withOpacity(0.1),
+                    ),
                 ],
-              ),
-            );
-          }),
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow({
+    IconData? icon,
+    required String label,
+    required String value,
+    bool highlight = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          if (icon != null) ...[
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: highlight
+                    ? AppTheme.primaryColor.withOpacity(0.1)
+                    : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: highlight
+                    ? AppTheme.primaryColor
+                    : AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: highlight
+                    ? AppTheme.textPrimary
+                    : AppTheme.textSecondary,
+                fontWeight: highlight ? FontWeight.w500 : FontWeight.normal,
+              ),
+            ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: highlight ? 16 : 14,
+                fontWeight: FontWeight.w600,
+                color: highlight ? AppTheme.primaryColor : AppTheme.textPrimary,
+              ),
             ),
           ),
         ],
