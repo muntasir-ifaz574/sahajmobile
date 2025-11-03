@@ -235,57 +235,37 @@ class PreEnrollScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // Order Amount
+                    // Payment Term
                     _buildPaymentRow(
-                      'Order Amount',
-                      '৳${paymentSummary.orderAmount.toStringAsFixed(0)}',
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Down Payment
-                    _buildPaymentRow(
-                      'Down Payment',
-                      '৳${paymentSummary.downPayment.toStringAsFixed(0)} (${paymentSummary.downPaymentPercentage.toStringAsFixed(1)}%)',
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Payment Terms
-                    _buildPaymentRow(
-                      'Payment Terms',
+                      'Payment Term',
                       '${paymentSummary.paymentTerms} months',
                     ),
                     const SizedBox(height: 8),
 
-                    // Payment (Monthly/Weekly)
+                    // Cellphone MRP
                     _buildPaymentRow(
-                      paymentSummary.paymentFrequency == 'weekly'
-                          ? 'Weekly Payment'
-                          : 'Monthly Payment',
-                      '৳${paymentSummary.monthlyPayment.toStringAsFixed(0)}',
+                      'Cellphone MRP',
+                      '৳${paymentSummary.orderAmount.toStringAsFixed(0)}',
                     ),
                     const SizedBox(height: 8),
 
-                    // Service Fee
+                    // Customer Down-Payment (percent / amount)
                     _buildPaymentRow(
-                      'Service Fee Rate',
-                      '${paymentSummary.serviceFeeRate.toStringAsFixed(2)}%',
+                      'Customer Down-Payment',
+                      '${paymentSummary.downPaymentPercentage.toStringAsFixed(1)}% / ৳${paymentSummary.downPayment.toStringAsFixed(0)}',
                     ),
                     const SizedBox(height: 8),
 
-                    // Total Service Fee
+                    // Customer due (before EMI fee) = MRP - Down payment
                     _buildPaymentRow(
-                      'Total Service Fee',
-                      '৳${paymentSummary.totalServiceFee.toStringAsFixed(0)}',
+                      'Customer due (before EMI fee)',
+                      '৳${(paymentSummary.orderAmount - paymentSummary.downPayment).toStringAsFixed(0)}',
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
-                    // Divider
-                    const Divider(color: AppTheme.borderColor),
-                    const SizedBox(height: 12),
-
-                    // Total Outstanding
+                    // Customer Repayment = Total Outstanding
                     _buildPaymentRow(
-                      'Total Outstanding',
+                      'Customer Repayment',
                       '৳${paymentSummary.totalOutstanding.toStringAsFixed(0)}',
                       isTotal: true,
                     ),

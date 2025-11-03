@@ -59,8 +59,8 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Notice Board
-              _buildNoticeBoard(),
+              // Slider Banner (hidden if no data)
+              _buildSliderSection(),
             ],
           ),
         ),
@@ -230,7 +230,7 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Center(
                 child: Text(
-                  'Beta Version 0.0.1',
+                  'Beta Version 0.0.2',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary.withOpacity(0.7),
@@ -569,7 +569,7 @@ class DashboardScreen extends ConsumerWidget {
             context.go('/installment/product-selection');
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 15),
         _buildActionButton(
           context,
           'Application',
@@ -630,27 +630,133 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNoticeBoard() {
+  Widget _buildSliderSection() {
+    return FutureBuilder<List<String>>(
+      future: ApiService.getSliderImages(),
+      builder: (context, snapshot) {
+        final images = snapshot.data ?? const <String>[];
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+        if (images.isEmpty) {
+          // Do not show the section if result is empty
+          return const SizedBox.shrink();
+        }
+        return _SliderBanner(images: images);
+      },
+    );
+  }
+}
+
+class _SliderBanner extends StatefulWidget {
+  final List<String> images;
+  const _SliderBanner({required this.images});
+
+  @override
+  State<_SliderBanner> createState() => _SliderBannerState();
+}
+
+class _SliderBannerState extends State<_SliderBanner> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.92);
+    // Auto-slide
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoSlide();
+    });
+  }
+
+  void _startAutoSlide() async {
+    while (mounted) {
+      await Future.delayed(const Duration(seconds: 4));
+      if (!mounted) break;
+      _currentPage = (_currentPage + 1) % widget.images.length;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      height: 160,
+      // decoration: BoxDecoration(
+      //   color: Colors.white,
+      //   borderRadius: BorderRadius.circular(12),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: Colors.black.withOpacity(0.05),
+      //       blurRadius: 10,
+      //       offset: const Offset(0, 2),
+      //     ),
+      //   ],
+      // ),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Text(
-        'Notice Board',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.textPrimary,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.images.length,
+              onPageChanged: (i) => setState(() => _currentPage = i),
+              itemBuilder: (context, index) {
+                final url = widget.images[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 6,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey.shade200,
+                      image: DecorationImage(
+                        image: NetworkImage(url),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Dots indicator
+            Positioned(
+              bottom: 8,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.images.length, (i) {
+                  final active = i == _currentPage;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 10 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: active ? AppTheme.primaryColor : Colors.white70,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
         ),
       ),
     );

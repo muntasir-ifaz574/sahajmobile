@@ -88,7 +88,8 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
     // Use provided paths or fallback to state paths
     final finalBkashPath = bkashStatementPath ?? state.bkashStatementPath;
     final finalBankPath = bankStatementPath ?? state.bankStatementPath;
-    final finalSignaturePath = customerSignaturePath ?? state.customerSignaturePath;
+    final finalSignaturePath =
+        customerSignaturePath ?? state.customerSignaturePath;
     if (!isApplicationComplete()) {
       final List<String> missing = [];
       if (state.personalInfo == null) missing.add('Personal information');
@@ -193,9 +194,10 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
 
       // File fields (paths)
       final Map<String, String?> filePaths = {
-        // 'work_certifier': job.workIdFrontImage,
         'front_nid': personal.nidFrontImage,
         'back_nid': personal.nidBackImage,
+        'job_front': job.workIdFrontImage,
+        // 'job_back': job.workIdBackImage,
         'gaurantor_front_nid': guarantor.nidFrontImage,
         'gaurantor_back_nid': guarantor.nidBackImage,
         'bKash_statement': finalBkashPath,

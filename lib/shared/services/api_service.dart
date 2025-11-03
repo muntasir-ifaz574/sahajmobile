@@ -188,7 +188,8 @@ class ApiService {
       final criticalFields = [
         'front_nid',
         'back_nid',
-        'work_certifier',
+        'job_front',
+        'job_back',
         'gaurantor_front_nid',
         'gaurantor_back_nid',
       ];
@@ -502,6 +503,38 @@ class ApiService {
         }
       }
       throw Exception(data['message']?.toString() ?? 'Failed to load charges');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Get slider images for dashboard
+  static Future<List<String>> getSliderImages() async {
+    try {
+      final response = await _dio.post('/get_slider');
+      final dynamic raw = response.data;
+      final Map<String, dynamic> data = raw is String
+          ? (jsonDecode(raw) as Map<String, dynamic>)
+          : (raw as Map<String, dynamic>);
+      if ((data['status'] as int?) == 1) {
+        final result = data['result'];
+        if (result is Map) {
+          // Collect values (URLs) from the map and return as list
+          return result.values
+              .map((e) => e?.toString() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toList()
+              .cast<String>();
+        }
+        if (result is List) {
+          return result
+              .map((e) => e?.toString() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toList()
+              .cast<String>();
+        }
+      }
+      return const <String>[];
     } on DioException catch (e) {
       throw _handleError(e);
     }

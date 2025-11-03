@@ -102,40 +102,76 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
         .setBkashStatementPath(_bkashStatementFile?.path);
   }
 
-  Future<void> _pickWorkCertifierImage() async {
+  Future<void> _pickFrontJobIdImage() async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
       if (image != null) {
         setState(() {
-          _workCertifierFile = File(image.path);
+          _frontWorkIdImage = File(image.path);
         });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error picking image: $e'),
+          content: Text('Error picking front image: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  Future<void> _captureWorkCertifierImage() async {
+  Future<void> _captureFrontJobIdImage() async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.camera);
-
       if (image != null) {
         setState(() {
-          _workCertifierFile = File(image.path);
+          _frontWorkIdImage = File(image.path);
         });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error capturing image: $e'),
+          content: Text('Error capturing front image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickBackJobIdImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _backWorkIdImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking back image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _captureBackJobIdImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+      if (image != null) {
+        setState(() {
+          _backWorkIdImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error capturing back image: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -398,9 +434,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Work Certifier File Upload
+              // Job ID Front
               const Text(
-                'Work Certifier',
+                'Job ID Front',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -413,19 +449,19 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: _workCertifierFile != null
+                    color: _frontWorkIdImage != null
                         ? Colors.green
                         : Colors.grey.shade300,
-                    width: _workCertifierFile != null ? 2 : 1,
+                    width: _frontWorkIdImage != null ? 2 : 1,
                   ),
                   borderRadius: BorderRadius.circular(8),
-                  color: _workCertifierFile != null
+                  color: _frontWorkIdImage != null
                       ? Colors.green.shade50
                       : Colors.white,
                 ),
                 child: Column(
                   children: [
-                    if (_workCertifierFile != null) ...[
+                    if (_frontWorkIdImage != null) ...[
                       Row(
                         children: [
                           const Icon(
@@ -436,7 +472,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Selected: ${_workCertifierFile!.path.split('/').last}',
+                              'Selected: ${_frontWorkIdImage!.path.split('/').last}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.green,
@@ -451,7 +487,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                             color: Colors.red,
                             onPressed: () {
                               setState(() {
-                                _workCertifierFile = null;
+                                _frontWorkIdImage = null;
                               });
                             },
                           ),
@@ -463,7 +499,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _pickWorkCertifierImage,
+                            onPressed: _pickFrontJobIdImage,
                             icon: const Icon(Icons.image, size: 18),
                             label: const Text('Upload Image'),
                             style: ElevatedButton.styleFrom(
@@ -476,7 +512,107 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _captureWorkCertifierImage,
+                            onPressed: _captureFrontJobIdImage,
+                            icon: const Icon(Icons.camera_alt, size: 18),
+                            label: const Text('Capture'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Supported formats: JPG, JPEG, PNG',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Job ID Back
+              const Text(
+                'Job ID Back',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: _backWorkIdImage != null
+                        ? Colors.green
+                        : Colors.grey.shade300,
+                    width: _backWorkIdImage != null ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  color: _backWorkIdImage != null
+                      ? Colors.green.shade50
+                      : Colors.white,
+                ),
+                child: Column(
+                  children: [
+                    if (_backWorkIdImage != null) ...[
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Selected: ${_backWorkIdImage!.path.split('/').last}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            color: Colors.red,
+                            onPressed: () {
+                              setState(() {
+                                _backWorkIdImage = null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _pickBackJobIdImage,
+                            icon: const Icon(Icons.image, size: 18),
+                            label: const Text('Upload Image'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _captureBackJobIdImage,
                             icon: const Icon(Icons.camera_alt, size: 18),
                             label: const Text('Capture'),
                             style: ElevatedButton.styleFrom(
