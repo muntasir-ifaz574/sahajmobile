@@ -128,13 +128,8 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     _buildGenderSelection(ref, nidInfo.gender),
                     const SizedBox(height: 16),
-                    // Contact Number (editable)
-                    _buildEditableField(
-                      ref,
-                      'Contact Number',
-                      (ref.watch(nidProvider).contactNumber ?? ''),
-                      'contactNumber',
-                    ),
+                    // Contact Number (editable text field)
+                    _buildContactNumberField(ref),
                     const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
@@ -471,6 +466,112 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildContactNumberField(WidgetRef ref) {
+    return _ContactNumberTextField(ref: ref);
+  }
+}
+
+// Separate StatefulWidget to manage TextEditingController properly
+class _ContactNumberTextField extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+
+  const _ContactNumberTextField({required this.ref});
+
+  @override
+  ConsumerState<_ContactNumberTextField> createState() =>
+      _ContactNumberTextFieldState();
+}
+
+class _ContactNumberTextFieldState
+    extends ConsumerState<_ContactNumberTextField> {
+  late TextEditingController _controller;
+  bool _isUserTyping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialValue = ref.read(nidProvider).contactNumber ?? '';
+    _controller = TextEditingController(text: initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch for external changes (from OCR or other sources)
+    final contactNumber = ref.watch(nidProvider).contactNumber ?? '';
+
+    // Only update controller if value changed externally (not from user typing)
+    if (!_isUserTyping && _controller.text != contactNumber) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _controller.text = contactNumber;
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: contactNumber.length),
+          );
+        }
+      });
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Contact Number',
+            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              hintText: 'Enter contact number',
+              hintStyle: TextStyle(fontSize: 14, color: AppTheme.textHint),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppTheme.borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppTheme.borderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+            controller: _controller,
+            onChanged: (value) {
+              _isUserTyping = true;
+              ref.read(nidProvider.notifier).updateContactNumber(value);
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) {
+                  _isUserTyping = false;
+                }
+              });
+            },
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
