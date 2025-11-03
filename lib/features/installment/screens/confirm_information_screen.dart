@@ -123,6 +123,15 @@ class ConfirmInformationScreen extends ConsumerWidget {
     required double displayTotalOutstanding,
     required String paymentFrequency,
   }) {
+    // Calculate Customer due (before EMI fee) = Cellphone MRP - Down Payment
+    final customerDueBeforeEmi = displayTotalPrice - displayDownPayment;
+    // Customer Repayment = Total Outstanding
+    final customerRepayment = displayTotalOutstanding;
+    // Down payment percent (safe against division by zero)
+    final double downPaymentPercent = displayTotalPrice > 0
+        ? (displayDownPayment / displayTotalPrice) * 100.0
+        : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -166,40 +175,58 @@ class ConfirmInformationScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
 
+          // Payment Term (unchanged)
           _buildDetailRow(
             icon: Icons.calendar_today_outlined,
             label: 'Payment Term',
             value: paymentTerm ?? '-',
           ),
           const Divider(height: 24),
+
+          // Repayment Options (unchanged)
           _buildDetailRow(
             icon: Icons.payment_outlined,
             label: 'Repayment Options',
             value: paymentFrequency == 'weekly' ? 'By Week' : 'By Month',
           ),
           const Divider(height: 24),
+
+          // Cellphone MRP
           _buildDetailRow(
-            icon: Icons.price_check_outlined,
-            label: 'Total Price',
+            icon: Icons.phone_android_outlined,
+            label: 'Cellphone MRP',
             value: displayTotalPrice > 0
                 ? 'TK ${displayTotalPrice.toStringAsFixed(0)}'
                 : '-',
-            highlight: true,
           ),
           const Divider(height: 24),
+
+          // Customer Down-Payment
           _buildDetailRow(
             icon: Icons.account_balance_wallet_outlined,
-            label: 'Down Payment',
+            label: 'Customer Down-Payment',
             value: displayDownPayment > 0
-                ? 'TK ${displayDownPayment.toStringAsFixed(0)}'
+                ? '${downPaymentPercent.toStringAsFixed(1)}% / TK ${displayDownPayment.toStringAsFixed(0)}'
                 : '-',
           ),
           const Divider(height: 24),
+
+          // Customer due (before EMI Fee)
           _buildDetailRow(
-            icon: Icons.trending_up_outlined,
-            label: 'Total Outstanding',
-            value: displayTotalOutstanding > 0
-                ? 'TK ${displayTotalOutstanding.toStringAsFixed(0)}'
+            icon: Icons.money_off_outlined,
+            label: 'Customer due (before EMI Fee)',
+            value: customerDueBeforeEmi > 0
+                ? 'TK ${customerDueBeforeEmi.toStringAsFixed(0)}'
+                : '-',
+          ),
+          const Divider(height: 24),
+
+          // Customer Repayment
+          _buildDetailRow(
+            icon: Icons.account_balance_outlined,
+            label: 'Customer Repayment',
+            value: customerRepayment > 0
+                ? 'TK ${customerRepayment.toStringAsFixed(0)}'
                 : '-',
             highlight: true,
           ),

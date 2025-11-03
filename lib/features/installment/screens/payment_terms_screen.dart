@@ -655,60 +655,61 @@ class _PaymentTermsScreenState extends ConsumerState<PaymentTermsScreen> {
       paymentAmount = customerRepayment / months;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Payment Summary',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryRow(
-            'Cellphone MRP',
-            'TK ${productPrice.toStringAsFixed(0)}',
-          ),
-          _buildSummaryRow(
-            'Customer Down-Payment',
-            downPaymentType == 'percentage'
-                ? '${downPaymentValue.toStringAsFixed(1)}% / TK ${downPaymentAmount.toStringAsFixed(0)}'
-                : 'TK ${downPaymentAmount.toStringAsFixed(0)} / ${_getDownPaymentPercentage().toStringAsFixed(1)}%',
-          ),
-          _buildSummaryRow(
-            'Customer due (before EMI fee)',
-            'TK ${customerDueBeforeEmi.toStringAsFixed(0)}',
-          ),
-          _buildSummaryRow(
-            'Customer Repayment',
-            'TK ${customerRepayment.toStringAsFixed(0)}',
-          ),
-          const Divider(),
-          _buildSummaryRow('Payment Term', selectedPaymentTerm!),
-          _buildSummaryRow(
-            'Payment Frequency',
-            paymentFrequency == 'weekly' ? 'Weekly' : 'Monthly',
-          ),
-          if (paymentFrequency == 'weekly')
-            _buildSummaryRow(
-              'Number of Repayments',
-              '$weeklyRepaymentCount weeks',
-            ),
-          _buildSummaryRow(
-            paymentFrequency == 'weekly' ? 'Weekly Payment' : 'Monthly Payment',
-            'TK ${paymentAmount.toStringAsFixed(0)}',
-          ),
-        ],
-      ),
-    );
+    // return Container(
+    //   padding: const EdgeInsets.all(16),
+    //   decoration: BoxDecoration(
+    //     color: AppTheme.cardColor,
+    //     borderRadius: BorderRadius.circular(12),
+    //   ),
+    //   child: Column(
+    //     crossAxisAlignment: CrossAxisAlignment.start,
+    //     children: [
+    //       const Text(
+    //         'Payment Summary',
+    //         style: TextStyle(
+    //           fontSize: 16,
+    //           fontWeight: FontWeight.w600,
+    //           color: AppTheme.textPrimary,
+    //         ),
+    //       ),
+    //       const SizedBox(height: 12),
+    //       _buildSummaryRow(
+    //         'Cellphone MRP',
+    //         'TK ${productPrice.toStringAsFixed(0)}',
+    //       ),
+    //       _buildSummaryRow(
+    //         'Customer Down-Payment',
+    //         downPaymentType == 'percentage'
+    //             ? '${downPaymentValue.toStringAsFixed(1)}% / TK ${downPaymentAmount.toStringAsFixed(0)}'
+    //             : 'TK ${downPaymentAmount.toStringAsFixed(0)} / ${_getDownPaymentPercentage().toStringAsFixed(1)}%',
+    //       ),
+    //       _buildSummaryRow(
+    //         'Customer due (before EMI fee)',
+    //         'TK ${customerDueBeforeEmi.toStringAsFixed(0)}',
+    //       ),
+    //       _buildSummaryRow(
+    //         'Customer Repayment',
+    //         'TK ${customerRepayment.toStringAsFixed(0)}',
+    //       ),
+    //       const Divider(),
+    //       _buildSummaryRow('Payment Term', selectedPaymentTerm!),
+    //       _buildSummaryRow(
+    //         'Payment Frequency',
+    //         paymentFrequency == 'weekly' ? 'Weekly' : 'Monthly',
+    //       ),
+    //       if (paymentFrequency == 'weekly')
+    //         _buildSummaryRow(
+    //           'Number of Repayments',
+    //           '$weeklyRepaymentCount weeks',
+    //         ),
+    //       _buildSummaryRow(
+    //         paymentFrequency == 'weekly' ? 'Weekly Payment' : 'Monthly Payment',
+    //         'TK ${paymentAmount.toStringAsFixed(0)}',
+    //       ),
+    //     ],
+    //   ),
+    // );
+    return SizedBox.shrink();
   }
 
   Widget _buildSummaryRow(String label, String value) {
