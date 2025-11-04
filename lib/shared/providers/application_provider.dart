@@ -197,7 +197,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'front_nid': personal.nidFrontImage,
         'back_nid': personal.nidBackImage,
         'job_front': job.workIdFrontImage,
-        // 'job_back': job.workIdBackImage,
+        'job_back': job.workIdBackImage,
         'gaurantor_front_nid': guarantor.nidFrontImage,
         'gaurantor_back_nid': guarantor.nidBackImage,
         'bKash_statement': finalBkashPath,
