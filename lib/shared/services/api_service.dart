@@ -77,6 +77,11 @@ class ApiService {
         name: 'ApiService',
       );
 
+      developer.log(
+        '=== week_type: ${textFields['week_type'] ?? 'null'} ===',
+        name: 'ApiService',
+      );
+
       final Map<String, dynamic> payload = {...textFields};
 
       // Verify and attach files with detailed logging

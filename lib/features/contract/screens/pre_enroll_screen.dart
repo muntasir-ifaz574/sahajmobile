@@ -110,7 +110,9 @@ class PreEnrollScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade200),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 106, 94, 94),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,8 +221,18 @@ class PreEnrollScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardColor,
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: AppTheme.borderColor.withOpacity(0.4),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,18 +268,22 @@ class PreEnrollScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
 
-                    // Customer due (before EMI fee) = MRP - Down payment
-                    _buildPaymentRow(
-                      'Customer due (before EMI fee)',
-                      '৳${(paymentSummary.orderAmount - paymentSummary.downPayment).toStringAsFixed(0)}',
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Customer Repayment = Total Outstanding
-                    _buildPaymentRow(
-                      'Customer Repayment',
-                      '৳${paymentSummary.totalOutstanding.toStringAsFixed(0)}',
-                      isTotal: true,
+                    // Accent summary chip row
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildChip(
+                          'Payment',
+                          paymentSummary.paymentFrequency == 'weekly'
+                              ? 'Weekly'
+                              : 'Monthly',
+                        ),
+                        _buildChip(
+                          'Installments',
+                          '${paymentSummary.paymentTerms}',
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -385,6 +401,38 @@ class PreEnrollScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildChip(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

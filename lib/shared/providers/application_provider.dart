@@ -133,33 +133,10 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'brand': product.brand,
         'model': product.model,
         'months_repay': plan.paymentTermId,
+        'week_type': plan.paymentFrequency,
         'cellphone_MRP': product.price.toString(),
-        'discountRate': '0',
-        'discount_percent': '0',
-        'phone_cost': plan.orderAmount.toString(),
         'downPayment': plan.downPayment.toString(),
         'down_payment_percent': plan.downPaymentPercentage.toString(),
-        'advance': plan.downPayment.toString(),
-        'gross_moic': plan.totalOutstanding.toString(),
-        'customer_due': (plan.orderAmount - plan.downPayment).toString(),
-        'customer_upcharge': plan.totalServiceFee.toString(),
-        'customer_repayment': plan.totalOutstanding.toString(),
-        'loss_reserve': '0',
-        'loss_reserve_percent': '0',
-        'total_repayment': plan.totalOutstanding.toString(),
-        'per_phone_gross': (plan.totalOutstanding - plan.orderAmount)
-            .toString(),
-        'loss_adj_moic': plan.totalOutstanding.toString(),
-        'phone_lock_expense': '0',
-        'net_repayment': plan.totalOutstanding.toString(),
-        'net_net_moic': plan.totalOutstanding.toString(),
-        'week_type': plan.paymentFrequency,
-        'transaction_charge': '0',
-        'installmentAmount': plan.monthlyPayment.toString(),
-        'installmentStartDate': DateTime.now()
-            .toIso8601String()
-            .split('T')
-            .first,
         'nationalId': personal.nidNumber,
         'contact_number': (ref.read(nidProvider).contactNumber ?? ''),
         'birthDate': personal.dateOfBirth.toIso8601String().split('T').first,
@@ -204,6 +181,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'bank_statement': finalBankPath,
         'customer_signature': finalSignaturePath,
       };
+
 
       final result = await ApiService.submitApplication(
         textFields: textFields,
@@ -384,7 +362,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
     if (state.selectedProduct == null) return 'No product selected';
 
     final product = state.selectedProduct!;
-    return '${product.brand}, ${product.model}, ${product.description}';
+    return '${product.brand}, ${product.model}';
   }
 
   // Helper method to get primary IMEI

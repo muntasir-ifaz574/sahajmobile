@@ -561,6 +561,8 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       children: [
+        _buildEmiCalculatorButton(context),
+        const SizedBox(height: 15),
         _buildActionButton(
           context,
           'Create New Application',
@@ -645,6 +647,96 @@ class DashboardScreen extends ConsumerWidget {
         return _SliderBanner(images: images);
       },
     );
+  }
+
+  Widget _buildEmiCalculatorButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryColor.withOpacity(0.12),
+            AppTheme.primaryColor.withOpacity(0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => _openEmiCalculator(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.calculate_outlined,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'EMI Calculator',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Calculate installments and repayment quickly',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppTheme.textHint,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openEmiCalculator(BuildContext context) {
+    _launchUrlInApp('https://sm-calculator-teal.vercel.app/');
+  }
+}
+
+Future<void> _launchUrlInApp(String url) async {
+  final Uri uri = Uri.parse(url);
+  try {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.inAppWebView);
+    }
+  } catch (e) {
+    debugPrint('Error opening URL: $e');
   }
 }
 

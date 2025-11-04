@@ -77,14 +77,6 @@ class ConfirmInformationScreen extends ConsumerWidget {
               paymentFrequency: displayPaymentFrequency,
             ),
 
-            const SizedBox(height: 24),
-
-            // Repayment Plan Details
-            _buildRepaymentPlanDetails(
-              displayMonths: displayMonths,
-              displayMonthlyPayment: displayMonthlyPayment,
-            ),
-
             const SizedBox(height: 40),
 
             // Confirm Button
@@ -123,10 +115,6 @@ class ConfirmInformationScreen extends ConsumerWidget {
     required double displayTotalOutstanding,
     required String paymentFrequency,
   }) {
-    // Calculate Customer due (before EMI fee) = Cellphone MRP - Down Payment
-    final customerDueBeforeEmi = displayTotalPrice - displayDownPayment;
-    // Customer Repayment = Total Outstanding
-    final customerRepayment = displayTotalOutstanding;
     // Down payment percent (safe against division by zero)
     final double downPaymentPercent = displayTotalPrice > 0
         ? (displayDownPayment / displayTotalPrice) * 100.0
@@ -209,27 +197,7 @@ class ConfirmInformationScreen extends ConsumerWidget {
                 ? '${downPaymentPercent.toStringAsFixed(1)}% / TK ${displayDownPayment.toStringAsFixed(0)}'
                 : '-',
           ),
-          const Divider(height: 24),
-
-          // Customer due (before EMI Fee)
-          _buildDetailRow(
-            icon: Icons.money_off_outlined,
-            label: 'Customer due (before EMI Fee)',
-            value: customerDueBeforeEmi > 0
-                ? 'TK ${customerDueBeforeEmi.toStringAsFixed(0)}'
-                : '-',
-          ),
-          const Divider(height: 24),
-
-          // Customer Repayment
-          _buildDetailRow(
-            icon: Icons.account_balance_outlined,
-            label: 'Customer Repayment',
-            value: customerRepayment > 0
-                ? 'TK ${customerRepayment.toStringAsFixed(0)}'
-                : '-',
-            highlight: true,
-          ),
+          // Intentionally not showing Customer Due and Customer Repayment
         ],
       ),
     );
