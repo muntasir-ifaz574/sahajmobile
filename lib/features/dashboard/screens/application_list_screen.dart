@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/api_service.dart';
 
@@ -12,15 +13,51 @@ class ApplicationListScreen extends ConsumerStatefulWidget {
       _ApplicationListScreenState();
 }
 
-class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
+class _BoldValueText extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _BoldValueText({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: '$label: ',
+        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        children: [
+          TextSpan(
+            text: value,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _applications = [];
   bool _isLoading = true;
   String? _error;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadApplications();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadApplications() async {
@@ -71,6 +108,36 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
     }
   }
 
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString == 'N/A') {
+      return 'N/A';
+    }
+    try {
+      final dateTime = DateTime.parse(dateString);
+      return DateFormat('d MMM yyyy').format(dateTime);
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  String _formatDownPayment(String? downPayment) {
+    if (downPayment == null || downPayment == 'N/A') {
+      return 'N/A';
+    }
+    try {
+      final value = double.parse(downPayment);
+      return value.round().toString();
+    } catch (e) {
+      return downPayment;
+    }
+  }
+
+  List<Map<String, dynamic>> _getFilteredApplications(String status) {
+    return _applications
+        .where((app) => app['status']?.toString() == status)
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,6 +153,19 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
           icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
           onPressed: () => context.go('/dashboard'),
         ),
+        bottom: _isLoading || _error != null
+            ? null
+            : TabBar(
+                controller: _tabController,
+                labelColor: AppTheme.primaryColor,
+                unselectedLabelColor: AppTheme.textSecondary,
+                indicatorColor: AppTheme.primaryColor,
+                tabs: const [
+                  Tab(text: 'Pending'),
+                  Tab(text: 'Approved'),
+                  Tab(text: 'Disapproved'),
+                ],
+              ),
       ),
       body: _isLoading
           ? const Center(
@@ -122,38 +202,53 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
                 ],
               ),
             )
-          : _applications.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.description_outlined,
-                    size: 64,
-                    color: AppTheme.textSecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No applications found',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadApplications,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(8),
-                itemCount: _applications.length,
-                itemBuilder: (context, index) {
-                  final app = _applications[index];
-                  return _buildApplicationListItem(app);
-                },
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildApplicationsList('2'), // Pending
+                _buildApplicationsList('1'), // Approved
+                _buildApplicationsList('3'), // Disapproved
+              ],
+            ),
+    );
+  }
+
+  Widget _buildApplicationsList(String status) {
+    final filteredApplications = _getFilteredApplications(status);
+
+    if (filteredApplications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.description_outlined,
+              size: 64,
+              color: AppTheme.textSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No ${_getStatusText(status)} applications found',
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppTheme.textSecondary,
               ),
             ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadApplications,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: filteredApplications.length,
+        itemBuilder: (context, index) {
+          final app = filteredApplications[index];
+          return _buildApplicationListItem(app);
+        },
+      ),
     );
   }
 
@@ -164,8 +259,12 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
     final applicant = app['applicant']?.toString() ?? 'N/A';
     final telephone = app['telephone']?.toString() ?? 'N/A';
     final paymentTearm = app['name']?.toString() ?? 'N/A';
-    final supplier = app['supplier_name']?.toString() ?? 'N/A';
     final id = app['id']?.toString() ?? 'N/A';
+    final date = app['date']?.toString() ?? 'N/A';
+    final brand = app['brand']?.toString() ?? 'N/A';
+    final model = app['model']?.toString() ?? 'N/A';
+    final salesRate = app['salesRate']?.toString() ?? 'N/A';
+    final downPayment = app['downPayment']?.toString() ?? 'N/A';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -174,87 +273,90 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              id,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: statusColor,
+      child: Stack(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            leading: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  id,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        title: Text(
-          applicant,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              'Tel: $telephone',
+            title: Text(
+              applicant,
               style: const TextStyle(
-                fontSize: 13,
-                color: AppTheme.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              'Payment Term: $paymentTearm',
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              supplier,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            statusText,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: statusColor,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                _BoldValueText(label: 'Tel', value: telephone),
+                const SizedBox(height: 2),
+                _BoldValueText(label: 'Date', value: _formatDate(date)),
+                const SizedBox(height: 2),
+                _BoldValueText(label: 'Brand', value: brand),
+                _BoldValueText(label: 'Model', value: model),
+                const SizedBox(height: 2),
+                _BoldValueText(label: 'Payment Term', value: paymentTearm),
+                const SizedBox(height: 2),
+                _BoldValueText(label: 'Sales Rate', value: salesRate),
+                const SizedBox(height: 2),
+                _BoldValueText(
+                  label: 'Down Payment',
+                  value: _formatDownPayment(downPayment),
+                ),
+              ],
             ),
           ),
-        ),
-        isThreeLine: true,
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+              ),
+              child: Text(
+                statusText,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
