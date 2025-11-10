@@ -491,8 +491,7 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                   DropdownMenuItem(value: 'Mother', child: Text('Mother')),
                   DropdownMenuItem(value: 'Spouse', child: Text('Spouse')),
                   DropdownMenuItem(value: 'Sibling', child: Text('Sibling')),
-                  DropdownMenuItem(value: 'Friend', child: Text('Friend')),
-                  DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  DropdownMenuItem(value: 'Cousin', child: Text('Cousin')),
                 ],
                 onChanged: (value) {
                   if (value != null) {

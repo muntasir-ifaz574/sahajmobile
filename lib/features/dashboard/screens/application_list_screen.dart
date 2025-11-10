@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/api_service.dart';
 
@@ -46,6 +47,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   bool _isLoading = true;
   String? _error;
   late TabController _tabController;
+  final Set<String> _expandedItems = {};
 
   @override
   void initState() {
@@ -265,6 +267,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     final model = app['model']?.toString() ?? 'N/A';
     final salesRate = app['salesRate']?.toString() ?? 'N/A';
     final downPayment = app['downPayment']?.toString() ?? 'N/A';
+    final qrCode = app['qr_code']?.toString();
+    final isApproved = status == '1';
+    final isExpanded = _expandedItems.contains(id);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -279,83 +284,193 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
           ),
         ],
       ),
-      child: Stack(
+      child: Column(
         children: [
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            leading: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  id,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
+          InkWell(
+            onTap: isApproved && qrCode != null && qrCode.isNotEmpty
+                ? () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedItems.remove(id);
+                      } else {
+                        _expandedItems.add(id);
+                      }
+                    });
+                  }
+                : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        id,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    applicant,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      _BoldValueText(label: 'Tel', value: telephone),
+                      const SizedBox(height: 2),
+                      _BoldValueText(label: 'Date', value: _formatDate(date)),
+                      const SizedBox(height: 2),
+                      _BoldValueText(label: 'Brand', value: brand),
+                      _BoldValueText(label: 'Model', value: model),
+                      const SizedBox(height: 2),
+                      _BoldValueText(
+                        label: 'Payment Term',
+                        value: paymentTearm,
+                      ),
+                      const SizedBox(height: 2),
+                      _BoldValueText(label: 'Sales Rate', value: salesRate),
+                      const SizedBox(height: 2),
+                      _BoldValueText(
+                        label: 'Down Payment',
+                        value: _formatDownPayment(downPayment),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ),
-            title: Text(
-              applicant,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                _BoldValueText(label: 'Tel', value: telephone),
-                const SizedBox(height: 2),
-                _BoldValueText(label: 'Date', value: _formatDate(date)),
-                const SizedBox(height: 2),
-                _BoldValueText(label: 'Brand', value: brand),
-                _BoldValueText(label: 'Model', value: model),
-                const SizedBox(height: 2),
-                _BoldValueText(label: 'Payment Term', value: paymentTearm),
-                const SizedBox(height: 2),
-                _BoldValueText(label: 'Sales Rate', value: salesRate),
-                const SizedBox(height: 2),
-                _BoldValueText(
-                  label: 'Down Payment',
-                  value: _formatDownPayment(downPayment),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(12),
+                        bottomLeft: Radius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
                 ),
+                if (isApproved && qrCode != null && qrCode.isNotEmpty)
+                  Positioned(
+                    bottom: 8,
+                    left: 16,
+                    child: Icon(
+                      Icons.qr_code,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                if (isApproved && qrCode != null && qrCode.isNotEmpty)
+                  Positioned(
+                    bottom: 8,
+                    right: 16,
+                    child: Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: AppTheme.textSecondary,
+                      size: 24,
+                    ),
+                  ),
               ],
             ),
           ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.only(
-                  topRight: Radius.circular(12),
-                  bottomLeft: Radius.circular(12),
+
+          if (isApproved && qrCode != null && qrCode.isNotEmpty)
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  // color: AppTheme.backgroundColor,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'QR Code',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        // color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        // boxShadow: [
+                        //   BoxShadow(
+                        //     color: Colors.black.withValues(alpha: 0.05),
+                        //     blurRadius: 5,
+                        //     offset: const Offset(0, 2),
+                        //   ),
+                        // ],
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: qrCode,
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.primaryColor,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.error_outline,
+                          color: AppTheme.errorColor,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
-                ),
-              ),
+              crossFadeState: isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
             ),
-          ),
         ],
       ),
     );

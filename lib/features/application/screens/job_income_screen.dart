@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'dart:io';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/application_model.dart';
 import '../../../shared/providers/application_provider.dart';
+import '../../../shared/services/bkash_statement_ocr_service.dart';
+import '../../../shared/providers/nid_provider.dart';
 
 class JobIncomeScreen extends ConsumerStatefulWidget {
   const JobIncomeScreen({super.key});
@@ -22,12 +27,17 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   final _certifierNameController = TextEditingController();
   final _certifierMobileController = TextEditingController();
   final _monthlyIncomeController = TextEditingController();
+  final _bkashBalanceController = TextEditingController();
 
   File? _frontWorkIdImage;
   File? _backWorkIdImage;
   File? _workCertifierFile;
   File? _bankStatementFile;
   File? _bkashStatementFile;
+  String? _bkashAccountName;
+  String? _bkashAccountNumber;
+  String? _bkashStatementTenure;
+  final List<String> _bkashTenureOptions = const ['3', '6', '9', '12'];
 
   @override
   void initState() {
@@ -45,6 +55,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     _certifierNameController.dispose();
     _certifierMobileController.dispose();
     _monthlyIncomeController.dispose();
+    _bkashBalanceController.dispose();
     super.dispose();
   }
 
@@ -77,6 +88,22 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     if (appState.bkashStatementPath != null) {
       _bkashStatementFile = File(appState.bkashStatementPath!);
     }
+    if (appState.bkashAccountName != null &&
+        appState.bkashAccountName!.isNotEmpty) {
+      _bkashAccountName = appState.bkashAccountName;
+    }
+    if (appState.bkashAccountNumber != null &&
+        appState.bkashAccountNumber!.isNotEmpty) {
+      _bkashAccountNumber = appState.bkashAccountNumber;
+    }
+    if (appState.bkashStatementTenure != null &&
+        appState.bkashStatementTenure!.isNotEmpty) {
+      _bkashStatementTenure = appState.bkashStatementTenure;
+    }
+    if (appState.bkashStatementBalance != null &&
+        appState.bkashStatementBalance!.isNotEmpty) {
+      _bkashBalanceController.text = appState.bkashStatementBalance!;
+    }
   }
 
   void _saveJobInfo() {
@@ -94,12 +121,22 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     ref.read(applicationDataProvider.notifier).setJobInfo(jobInfo);
 
     // Save statement paths to application provider
-    ref
-        .read(applicationDataProvider.notifier)
-        .setBankStatementPath(_bankStatementFile?.path);
-    ref
-        .read(applicationDataProvider.notifier)
-        .setBkashStatementPath(_bkashStatementFile?.path);
+    final applicationNotifier = ref.read(applicationDataProvider.notifier);
+    applicationNotifier.setBankStatementPath(_bankStatementFile?.path);
+    applicationNotifier.setBkashStatementPath(_bkashStatementFile?.path);
+    if (_bkashStatementFile != null) {
+      applicationNotifier.setBkashAccountInfo(
+        name: _bkashAccountName ?? '',
+        number: _bkashAccountNumber ?? '',
+      );
+      applicationNotifier.setBkashStatementDetails(
+        tenure: _bkashStatementTenure ?? '',
+        balance: _bkashBalanceController.text.trim(),
+      );
+    } else {
+      applicationNotifier.setBkashAccountInfo(name: '', number: '');
+      applicationNotifier.setBkashStatementDetails(tenure: '', balance: '');
+    }
   }
 
   Future<void> _pickFrontJobIdImage() async {
@@ -219,6 +256,61 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     }
   }
 
+  Future<void> _pickBankStatementPdf() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf'],
+        withData: true,
+        withReadStream: true,
+        allowMultiple: false,
+        dialogTitle: 'Select Bank Statement PDF',
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final selected = result.files.single;
+        final ext = (selected.extension ?? '').toLowerCase();
+        if (ext != 'pdf') {
+          _showSnackBar('Only PDF files are allowed.');
+          return;
+        }
+
+        String? effectivePath = selected.path;
+        if (effectivePath == null) {
+          final dir = await getTemporaryDirectory();
+          final fileName = selected.name.isNotEmpty
+              ? p.setExtension(selected.name, '.pdf')
+              : 'bank_statement_${DateTime.now().millisecondsSinceEpoch}.pdf';
+          final tempPath = p.join(dir.path, fileName);
+          final outFile = File(tempPath);
+          if (selected.bytes != null) {
+            await outFile.writeAsBytes(selected.bytes!, flush: true);
+            effectivePath = tempPath;
+          } else if (selected.readStream != null) {
+            final sink = outFile.openWrite();
+            await selected.readStream!.pipe(sink);
+            await sink.close();
+            effectivePath = tempPath;
+          }
+        }
+
+        if (effectivePath == null) {
+          _showSnackBar('Could not access selected PDF', isError: true);
+          return;
+        }
+
+        setState(() {
+          _bankStatementFile = File(effectivePath!);
+        });
+        _showSnackBar('Bank statement PDF selected!');
+      } else {
+        _showSnackBar('No file selected');
+      }
+    } catch (e) {
+      _showSnackBar('Error: $e', isError: true);
+    }
+  }
+
   // Methods for Bkash Statement
   Future<void> _pickBkashStatementImage() async {
     try {
@@ -229,6 +321,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
         setState(() {
           _bkashStatementFile = File(image.path);
         });
+        await _runBkashOcr(image.path);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -249,6 +342,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
         setState(() {
           _bkashStatementFile = File(image.path);
         });
+        await _runBkashOcr(image.path);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -257,6 +351,108 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _pickBkashStatementPdf() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf'],
+        withData: true,
+        withReadStream: true,
+        allowMultiple: false,
+        dialogTitle: 'Select PDF File',
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final selected = result.files.single;
+        final ext = (selected.extension ?? '').toLowerCase();
+        if (ext != 'pdf') {
+          _showSnackBar('Only PDF files are allowed.');
+          return;
+        }
+
+        String? effectivePath = selected.path;
+        if (effectivePath == null) {
+          final dir = await getTemporaryDirectory();
+          final fileName = selected.name.isNotEmpty
+              ? p.setExtension(selected.name, '.pdf')
+              : 'bkash_statement_${DateTime.now().millisecondsSinceEpoch}.pdf';
+          final tempPath = p.join(dir.path, fileName);
+          final outFile = File(tempPath);
+          if (selected.bytes != null) {
+            await outFile.writeAsBytes(selected.bytes!, flush: true);
+            effectivePath = tempPath;
+          } else if (selected.readStream != null) {
+            final sink = outFile.openWrite();
+            await selected.readStream!.pipe(sink);
+            await sink.close();
+            effectivePath = tempPath;
+          }
+        }
+
+        if (effectivePath == null) {
+          _showSnackBar('Could not access selected PDF', isError: true);
+          return;
+        }
+
+        setState(() {
+          _bkashStatementFile = File(effectivePath!);
+        });
+        await _runBkashOcr(effectivePath);
+        _showSnackBar('PDF selected successfully!');
+      } else {
+        _showSnackBar('No file selected');
+      }
+    } catch (e) {
+      _showSnackBar('Error: $e', isError: true);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _runBkashOcr(String path) async {
+    try {
+      final info = await BkashStatementOcrService.extract(path);
+      setState(() {
+        _bkashAccountName = info.accountName.isNotEmpty
+            ? info.accountName
+            : null;
+        _bkashAccountNumber = info.accountNumber.isNotEmpty
+            ? info.accountNumber
+            : null;
+      });
+      if (mounted &&
+          (info.accountName.isNotEmpty || info.accountNumber.isNotEmpty)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'bKash parsed: ${info.accountName.isNotEmpty ? info.accountName : 'Name N/A'}'
+              ' • ${info.accountNumber.isNotEmpty ? info.accountNumber : 'Number N/A'}',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Silently ignore OCR errors but inform user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not read bKash statement: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
@@ -322,6 +518,10 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                             _bankStatementFile = null;
                           } else {
                             _bkashStatementFile = null;
+                            _bkashAccountName = null;
+                            _bkashAccountNumber = null;
+                            _bkashStatementTenure = null;
+                            _bkashBalanceController.clear();
                           }
                         });
                       },
@@ -332,19 +532,24 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
               ],
               Row(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: onPickImage,
-                      icon: const Icon(Icons.image, size: 18),
-                      label: const Text('Upload Image'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                  const SizedBox(width: 8),
+                  if (title.contains('Bkash') || title.contains('Bank')) ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: title.contains('Bkash')
+                            ? _pickBkashStatementPdf
+                            : _pickBankStatementPdf,
+                        icon: const Icon(Icons.picture_as_pdf, size: 18),
+                        label: const Text('Upload PDF'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: onCaptureImage,
@@ -360,9 +565,13 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 ],
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Supported formats: JPG, JPEG, PNG',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
+              Text(
+                title.contains('Bkash')
+                    ? 'Supported formats: JPG, JPEG, PNG, PDF'
+                    : title.contains('Bank')
+                    ? 'Supported formats: JPG, JPEG, PNG, PDF'
+                    : 'Supported formats: JPG, JPEG, PNG',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ],
           ),
@@ -711,6 +920,144 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 onCaptureImage: _captureBkashStatementImage,
               ),
               const SizedBox(height: 8),
+              if (_bkashStatementFile != null) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'bKash Details (auto-filled from statement)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bkash Account Name',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Text(
+                          _bkashAccountName?.isNotEmpty == true
+                              ? _bkashAccountName!
+                              : 'Not detected',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Bkash Account Number',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Text(
+                          _bkashAccountNumber?.isNotEmpty == true
+                              ? _bkashAccountNumber!
+                              : 'Not detected',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _bkashStatementTenure,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'bKash Statement Tenure (months)',
+                          border: OutlineInputBorder(),
+                        ),
+                        hint: const Text('Select tenure'),
+                        items: _bkashTenureOptions
+                            .map(
+                              (tenure) => DropdownMenuItem<String>(
+                                value: tenure,
+                                child: Text('$tenure months'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _bkashStatementTenure = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (_bkashStatementFile == null) return null;
+                          if (value == null || value.isEmpty) {
+                            return 'Please select bKash statement tenure';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _bkashBalanceController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'bKash Statement Balance',
+                          hintText: 'Enter current balance',
+                          border: OutlineInputBorder(),
+                          prefixText: '৳ ',
+                        ),
+                        validator: (value) {
+                          if (_bkashStatementFile == null) return null;
+                          final trimmed = value?.trim() ?? '';
+                          if (trimmed.isEmpty) {
+                            return 'Please enter bKash statement balance';
+                          }
+                          if (double.tryParse(trimmed) == null) {
+                            return 'Please enter a valid number';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
 
               // Validation message for statements
               if (_bankStatementFile == null && _bkashStatementFile == null)
@@ -765,6 +1112,31 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                         ),
                       );
                       return;
+                    }
+
+                    if (_bkashStatementFile != null) {
+                      final contactNumberRaw =
+                          ref.read(nidProvider).contactNumber ?? '';
+                      final contactNumber = contactNumberRaw.replaceAll(
+                        RegExp(r'\D'),
+                        '',
+                      );
+                      final bkashNumber = (_bkashAccountNumber ?? '')
+                          .replaceAll(RegExp(r'\D'), '');
+
+                      if (contactNumber.isEmpty ||
+                          bkashNumber.isEmpty ||
+                          contactNumber != bkashNumber) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Contact number and bKash account number must be the same.',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
                     }
 
                     _saveJobInfo();

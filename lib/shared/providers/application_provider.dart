@@ -22,6 +22,10 @@ class ApplicationDataState {
   final String? customerSignaturePath;
   final String? bkashStatementPath;
   final String? bankStatementPath;
+  final String? bkashAccountName;
+  final String? bkashAccountNumber;
+  final String? bkashStatementTenure;
+  final String? bkashStatementBalance;
   final bool isLoading;
   final String? error;
 
@@ -36,6 +40,10 @@ class ApplicationDataState {
     this.customerSignaturePath,
     this.bkashStatementPath,
     this.bankStatementPath,
+    this.bkashAccountName,
+    this.bkashAccountNumber,
+    this.bkashStatementTenure,
+    this.bkashStatementBalance,
     this.isLoading = false,
     this.error,
   });
@@ -51,6 +59,10 @@ class ApplicationDataState {
     String? customerSignaturePath,
     String? bkashStatementPath,
     String? bankStatementPath,
+    String? bkashAccountName,
+    String? bkashAccountNumber,
+    String? bkashStatementTenure,
+    String? bkashStatementBalance,
     bool? isLoading,
     String? error,
   }) {
@@ -66,6 +78,11 @@ class ApplicationDataState {
           customerSignaturePath ?? this.customerSignaturePath,
       bkashStatementPath: bkashStatementPath ?? this.bkashStatementPath,
       bankStatementPath: bankStatementPath ?? this.bankStatementPath,
+      bkashAccountName: bkashAccountName ?? this.bkashAccountName,
+      bkashAccountNumber: bkashAccountNumber ?? this.bkashAccountNumber,
+      bkashStatementTenure: bkashStatementTenure ?? this.bkashStatementTenure,
+      bkashStatementBalance:
+          bkashStatementBalance ?? this.bkashStatementBalance,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -85,7 +102,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
     String? bankStatementPath,
     String? customerSignaturePath,
   }) async {
-    // Use provided paths or fallback to state paths
+
     final finalBkashPath = bkashStatementPath ?? state.bkashStatementPath;
     final finalBankPath = bankStatementPath ?? state.bankStatementPath;
     final finalSignaturePath =
@@ -145,6 +162,10 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'monthly_income': job.monthlyIncome.toString(),
         'certifier_mobile': job.certifierPhone,
         'work_certifier': job.certifierName,
+        'bkash_ac_name': state.bkashAccountName ?? '',
+        'bkash_number': state.bkashAccountNumber ?? '',
+        'bKash_statement_tenur': state.bkashStatementTenure ?? '',
+        'bKash_statement_balance': state.bkashStatementBalance ?? '',
         'guarantor_name': guarantor.fullName,
         'relationship_guarantor': guarantor.relationship,
         'guarantor_nid': guarantor.nidNumber,
@@ -181,7 +202,6 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'bank_statement': finalBankPath,
         'customer_signature': finalSignaturePath,
       };
-
 
       final result = await ApiService.submitApplication(
         textFields: textFields,
@@ -265,6 +285,22 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
 
   void setBankStatementPath(String? path) {
     state = state.copyWith(bankStatementPath: path, error: null);
+  }
+
+  void setBkashAccountInfo({String? name, String? number}) {
+    state = state.copyWith(
+      bkashAccountName: name ?? state.bkashAccountName,
+      bkashAccountNumber: number ?? state.bkashAccountNumber,
+      error: null,
+    );
+  }
+
+  void setBkashStatementDetails({String? tenure, String? balance}) {
+    state = state.copyWith(
+      bkashStatementTenure: tenure ?? state.bkashStatementTenure,
+      bkashStatementBalance: balance ?? state.bkashStatementBalance,
+      error: null,
+    );
   }
 
   void setLoading(bool loading) {

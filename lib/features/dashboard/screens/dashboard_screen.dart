@@ -230,7 +230,7 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Center(
                 child: Text(
-                  'Beta Version 0.0.3',
+                  'Beta Version 0.0.4',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary.withOpacity(0.7),
