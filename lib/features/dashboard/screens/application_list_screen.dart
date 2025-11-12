@@ -48,17 +48,25 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   String? _error;
   late TabController _tabController;
   final Set<String> _expandedItems = {};
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadApplications();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase().trim();
+      });
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -134,10 +142,42 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     }
   }
 
+  DateTime? _parseDate(String? dateString) {
+    if (dateString == null || dateString == 'N/A' || dateString.isEmpty) {
+      return null;
+    }
+    try {
+      return DateTime.parse(dateString);
+    } catch (e) {
+      return null;
+    }
+  }
+
   List<Map<String, dynamic>> _getFilteredApplications(String status) {
-    return _applications
+    var filtered = _applications
         .where((app) => app['status']?.toString() == status)
         .toList();
+
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((app) {
+        final applicant = (app['applicant']?.toString() ?? '').toLowerCase();
+        final telephone = (app['telephone']?.toString() ?? '').toLowerCase();
+        return applicant.contains(_searchQuery) ||
+            telephone.contains(_searchQuery);
+      }).toList();
+    }
+
+    filtered.sort((a, b) {
+      final dateA = _parseDate(a['date']?.toString());
+      final dateB = _parseDate(b['date']?.toString());
+
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return 1;
+      if (dateB == null) return -1;
+      return dateB.compareTo(dateA);
+    });
+
+    return filtered;
   }
 
   @override
@@ -204,14 +244,71 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                 ],
               ),
             )
-          : TabBarView(
-              controller: _tabController,
+          : Column(
               children: [
-                _buildApplicationsList('2'), // Pending
-                _buildApplicationsList('1'), // Approved
-                _buildApplicationsList('3'), // Disapproved
+                if (!_isLoading && _error == null) _buildSearchBar(),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildApplicationsList('2'), // Pending
+                      _buildApplicationsList('1'), // Approved
+                      _buildApplicationsList('3'), // Disapproved
+                    ],
+                  ),
+                ),
               ],
             ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: Colors.white,
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value.toLowerCase().trim();
+          });
+        },
+        decoration: InputDecoration(
+          hintText: 'Search by applicant or telephone...',
+          prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: AppTheme.textSecondary),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: AppTheme.backgroundColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: AppTheme.textSecondary.withValues(alpha: 0.2),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+              color: AppTheme.primaryColor,
+              width: 2,
+            ),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+        ),
+      ),
     );
   }
 
@@ -224,17 +321,22 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.description_outlined,
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off
+                  : Icons.description_outlined,
               size: 64,
               color: AppTheme.textSecondary,
             ),
             const SizedBox(height: 16),
             Text(
-              'No ${_getStatusText(status)} applications found',
+              _searchQuery.isNotEmpty
+                  ? 'No applications found matching "${_searchController.text}"'
+                  : 'No ${_getStatusText(status)} applications found',
               style: const TextStyle(
                 fontSize: 16,
                 color: AppTheme.textSecondary,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
