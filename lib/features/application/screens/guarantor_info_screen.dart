@@ -22,6 +22,8 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _dateController = TextEditingController();
+  final _presentAddressController = TextEditingController();
+  final _permanentAddressController = TextEditingController();
 
   String? _maritalStatus;
   String? _relationship;
@@ -46,6 +48,8 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _dateController.dispose();
+    _presentAddressController.dispose();
+    _permanentAddressController.dispose();
     super.dispose();
   }
 
@@ -64,6 +68,8 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
         _maritalStatus = guarantorInfo.maritalStatus;
         _frontImagePath = guarantorInfo.nidFrontImage;
         _backImagePath = guarantorInfo.nidBackImage;
+        _presentAddressController.text = guarantorInfo.presentAddress;
+        _permanentAddressController.text = guarantorInfo.permanentAddress;
       });
     }
   }
@@ -120,6 +126,8 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
     final nidNumber = _nidController.text.trim();
     final fullName = _nameController.text.trim();
     final phoneNumber = _phoneController.text.trim();
+    final presentAddress = _presentAddressController.text.trim();
+    final permanentAddress = _permanentAddressController.text.trim();
 
     // Validate text fields are not empty
     if (nidNumber.isEmpty) {
@@ -149,6 +157,14 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
       return 'Phone number must be at least 11 digits';
     }
 
+    if (presentAddress.isEmpty) {
+      return 'Please enter Guarantor\'s Present Address';
+    }
+
+    if (permanentAddress.isEmpty) {
+      return 'Please enter Guarantor\'s Permanent Address';
+    }
+
     try {
       // Ensure marital status is not empty and trimmed
       final maritalStatusValue = _maritalStatus?.trim() ?? '';
@@ -170,6 +186,8 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
         dateOfBirth: dateToUse,
         phoneNumber: phoneNumber,
         maritalStatus: maritalStatusValue,
+        presentAddress: presentAddress,
+        permanentAddress: permanentAddress,
         nidFrontImage: _frontImagePath,
         nidBackImage: _backImagePath,
       );
@@ -677,6 +695,38 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                   }
                   if (value.length < 11) {
                     return 'Mobile number must be at least 11 digits';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _presentAddressController,
+                decoration: const InputDecoration(
+                  labelText: 'Guarantor\'s Present Address',
+                  hintText: 'Enter present residential address',
+                ),
+                minLines: 2,
+                maxLines: 4,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter guarantor\'s present address';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _permanentAddressController,
+                decoration: const InputDecoration(
+                  labelText: 'Guarantor\'s Permanent Address',
+                  hintText: 'Enter permanent residential address',
+                ),
+                minLines: 2,
+                maxLines: 4,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter guarantor\'s permanent address';
                   }
                   return null;
                 },

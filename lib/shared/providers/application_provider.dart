@@ -102,7 +102,6 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
     String? bankStatementPath,
     String? customerSignaturePath,
   }) async {
-
     final finalBkashPath = bkashStatementPath ?? state.bkashStatementPath;
     final finalBankPath = bankStatementPath ?? state.bankStatementPath;
     final finalSignaturePath =
@@ -140,6 +139,11 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
           location.selectedDistrict?.id ?? address.district;
       final String preThanaId = location.selectedThana?.id ?? address.upazila;
       final String preUnionId = location.selectedUnion?.id ?? '';
+      // Permanent address IDs from address model
+      final String perDivisionId = address.permanentDivision;
+      final String perDistrictId = address.permanentDistrict;
+      final String perThanaId = address.permanentUpazila;
+      final String perUnionId = address.permanentUnion;
       // Get shop ID from storage
       final shopId = await StorageService.getShopId();
 
@@ -170,8 +174,10 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'relationship_guarantor': guarantor.relationship,
         'guarantor_nid': guarantor.nidNumber,
         'gaurantor_mobile': guarantor.phoneNumber,
-        'present_residential_address': address.addressDetails,
-        'permanent_residential_address': address.addressDetails,
+        'present_residential_address_customer': address.addressDetails,
+        'permanent_residential_address_customer': address.permanentAddressDetails,
+        'present_residential_address': guarantor.presentAddress,
+        'permanent_residential_address': guarantor.permanentAddress,
         'guarantor_dob': guarantor.dateOfBirth
             .toIso8601String()
             .split('T')
@@ -181,11 +187,11 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'pre_district': preDistrictId,
         'pre_thana': preThanaId,
         'pre_unions': preUnionId,
-        'is_present': '1',
-        'per_divsion': preDivisionId,
-        'per_district': preDistrictId,
-        'per_thana': preThanaId,
-        'per_unions': preUnionId,
+        'is_present': "1",
+        'per_divsion': perDivisionId,
+        'per_district': perDistrictId,
+        'per_thana': perThanaId,
+        'per_unions': perUnionId,
         'imei1': machine.imei1,
         'imei2': machine.imei2,
       };
@@ -339,7 +345,9 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         guarantor.nidNumber.isNotEmpty &&
         guarantor.fullName.isNotEmpty &&
         guarantor.phoneNumber.isNotEmpty &&
-        guarantor.maritalStatus.isNotEmpty;
+        guarantor.maritalStatus.isNotEmpty &&
+        guarantor.presentAddress.isNotEmpty &&
+        guarantor.permanentAddress.isNotEmpty;
   }
 
   bool isMachineInfoComplete() {

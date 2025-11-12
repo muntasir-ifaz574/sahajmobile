@@ -447,15 +447,46 @@ class NidOcrService {
     }
   }
 
-  /// Extract NID number by taking digit groups until 10 digits total
+  ///Old Nid
+  // Extract NID number by taking digit groups until 10 digits total
+  // static String _extractNidNumber(String text) {
+  //   List<String> groups = text.split(RegExp(r'\s+'));
+  //   StringBuffer nidBuf = StringBuffer();
+  //   int totalDigits = 0;
+  //   for (String group in groups) {
+  //     String digits = group.replaceAll(RegExp(r'[^\d]'), '');
+  //     if (digits.isNotEmpty && digits.length <= 8) {  // Reasonable group size
+  //       if (totalDigits + digits.length > 10) {
+  //         break;
+  //       }
+  //       if (totalDigits > 0) {
+  //         nidBuf.write(' ');
+  //       }
+  //       nidBuf.write(group);  // Preserve original formatting
+  //       totalDigits += digits.length;
+  //     }
+  //   }
+  //   if (totalDigits == 10) {
+  //     return nidBuf.toString().trim();
+  //   }
+  //   // Fallback: pure digits first 10
+  //   String pureDigits = text.replaceAll(RegExp(r'[^\d]'), '');
+  //   if (pureDigits.length >= 10) {
+  //     String nid = pureDigits.substring(0, 10);
+  //     // Standard format: 3 3 4
+  //     return '${nid.substring(0, 3)} ${nid.substring(3, 6)} ${nid.substring(6, 10)}';
+  //   }
+  //   return '';
+  // }
+  ///New Nid
   static String _extractNidNumber(String text) {
     List<String> groups = text.split(RegExp(r'\s+'));
     StringBuffer nidBuf = StringBuffer();
     int totalDigits = 0;
     for (String group in groups) {
       String digits = group.replaceAll(RegExp(r'[^\d]'), '');
-      if (digits.isNotEmpty && digits.length <= 8) {  // Reasonable group size
-        if (totalDigits + digits.length > 10) {
+      if (digits.isNotEmpty && digits.length <= 10) {  // Increased group size limit
+        if (totalDigits + digits.length > 15) {
           break;
         }
         if (totalDigits > 0) {
@@ -463,14 +494,26 @@ class NidOcrService {
         }
         nidBuf.write(group);  // Preserve original formatting
         totalDigits += digits.length;
+        // Stop once we hit a valid NID length
+        if (totalDigits == 10 || totalDigits == 14 || totalDigits == 15) {
+          break;
+        }
       }
     }
-    if (totalDigits == 10) {
+    if (totalDigits == 10 || totalDigits == 14 || totalDigits == 15) {
       return nidBuf.toString().trim();
     }
-    // Fallback: pure digits first 10
+    // Fallback: pure digits, prefer longest matching length starting from index 0
     String pureDigits = text.replaceAll(RegExp(r'[^\d]'), '');
-    if (pureDigits.length >= 10) {
+    if (pureDigits.length >= 15) {
+      String nid = pureDigits.substring(0, 15);
+      // Format as 5 5 5 (common grouping for longer IDs)
+      return '${nid.substring(0, 5)} ${nid.substring(5, 10)} ${nid.substring(10, 15)}';
+    } else if (pureDigits.length >= 14) {
+      String nid = pureDigits.substring(0, 14);
+      // Format as 4 5 5
+      return '${nid.substring(0, 4)} ${nid.substring(4, 9)} ${nid.substring(9, 14)}';
+    } else if (pureDigits.length >= 10) {
       String nid = pureDigits.substring(0, 10);
       // Standard format: 3 3 4
       return '${nid.substring(0, 3)} ${nid.substring(3, 6)} ${nid.substring(6, 10)}';

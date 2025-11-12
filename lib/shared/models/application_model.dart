@@ -87,12 +87,22 @@ class AddressInfo {
   final String district;
   final String upazila;
   final String addressDetails;
+  final String permanentDivision;
+  final String permanentDistrict;
+  final String permanentUpazila;
+  final String permanentUnion;
+  final String permanentAddressDetails;
 
   const AddressInfo({
     required this.division,
     required this.district,
     required this.upazila,
     required this.addressDetails,
+    required this.permanentDivision,
+    required this.permanentDistrict,
+    required this.permanentUpazila,
+    required this.permanentUnion,
+    required this.permanentAddressDetails,
   });
 
   factory AddressInfo.fromJson(Map<String, dynamic> json) =>
@@ -135,6 +145,8 @@ class GuarantorInfo {
   final DateTime dateOfBirth;
   final String phoneNumber;
   final String maritalStatus;
+  final String presentAddress;
+  final String permanentAddress;
   final String? nidFrontImage;
   final String? nidBackImage;
 
@@ -145,6 +157,8 @@ class GuarantorInfo {
     required this.dateOfBirth,
     required this.phoneNumber,
     required this.maritalStatus,
+    required this.presentAddress,
+    required this.permanentAddress,
     this.nidFrontImage,
     this.nidBackImage,
   });

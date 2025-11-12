@@ -89,6 +89,11 @@ AddressInfo _$AddressInfoFromJson(Map<String, dynamic> json) => AddressInfo(
   district: json['district'] as String,
   upazila: json['upazila'] as String,
   addressDetails: json['addressDetails'] as String,
+  permanentDivision: json['permanentDivision'] as String,
+  permanentDistrict: json['permanentDistrict'] as String,
+  permanentUpazila: json['permanentUpazila'] as String,
+  permanentUnion: json['permanentUnion'] as String,
+  permanentAddressDetails: json['permanentAddressDetails'] as String,
 );
 
 Map<String, dynamic> _$AddressInfoToJson(AddressInfo instance) =>
@@ -97,6 +102,11 @@ Map<String, dynamic> _$AddressInfoToJson(AddressInfo instance) =>
       'district': instance.district,
       'upazila': instance.upazila,
       'addressDetails': instance.addressDetails,
+      'permanentDivision': instance.permanentDivision,
+      'permanentDistrict': instance.permanentDistrict,
+      'permanentUpazila': instance.permanentUpazila,
+      'permanentUnion': instance.permanentUnion,
+      'permanentAddressDetails': instance.permanentAddressDetails,
     };
 
 JobInfo _$JobInfoFromJson(Map<String, dynamic> json) => JobInfo(
@@ -129,6 +139,8 @@ GuarantorInfo _$GuarantorInfoFromJson(Map<String, dynamic> json) =>
       dateOfBirth: DateTime.parse(json['dateOfBirth'] as String),
       phoneNumber: json['phoneNumber'] as String,
       maritalStatus: json['maritalStatus'] as String,
+      presentAddress: json['presentAddress'] as String,
+      permanentAddress: json['permanentAddress'] as String,
       nidFrontImage: json['nidFrontImage'] as String?,
       nidBackImage: json['nidBackImage'] as String?,
     );
@@ -141,6 +153,8 @@ Map<String, dynamic> _$GuarantorInfoToJson(GuarantorInfo instance) =>
       'dateOfBirth': instance.dateOfBirth.toIso8601String(),
       'phoneNumber': instance.phoneNumber,
       'maritalStatus': instance.maritalStatus,
+      'presentAddress': instance.presentAddress,
+      'permanentAddress': instance.permanentAddress,
       'nidFrontImage': instance.nidFrontImage,
       'nidBackImage': instance.nidBackImage,
     };

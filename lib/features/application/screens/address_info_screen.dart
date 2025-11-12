@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/api_service.dart';
 import '../../../shared/models/application_model.dart';
+import '../../../shared/models/division_model.dart';
+import '../../../shared/models/district_model.dart';
+import '../../../shared/models/thana_model.dart';
+import '../../../shared/models/union_model.dart';
 import '../../../shared/providers/application_provider.dart';
 
 class AddressInfoScreen extends ConsumerStatefulWidget {
@@ -16,6 +20,26 @@ class AddressInfoScreen extends ConsumerStatefulWidget {
 class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _addressDetailsController = TextEditingController();
+  final _permanentAddressDetailsController = TextEditingController();
+
+  // Permanent address location state
+  List<Division> _permanentDivisions = [];
+  List<District> _permanentDistricts = [];
+  List<Thana> _permanentThanas = [];
+  List<UnionModel> _permanentUnions = [];
+  Division? _selectedPermanentDivision;
+  District? _selectedPermanentDistrict;
+  Thana? _selectedPermanentThana;
+  UnionModel? _selectedPermanentUnion;
+  bool _isLoadingPermanentDivisions = false;
+  bool _isLoadingPermanentDistricts = false;
+  bool _isLoadingPermanentThanas = false;
+  bool _isLoadingPermanentUnions = false;
+  String? _permanentDivisionError;
+  String? _permanentDistrictError;
+  String? _permanentThanaError;
+  String? _permanentUnionError;
+  bool _isSameAsCurrentAddress = false;
 
   @override
   void initState() {
@@ -24,19 +48,88 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadExistingData();
       _fetchDivisions();
+      _fetchPermanentDivisions();
     });
   }
 
   @override
   void dispose() {
     _addressDetailsController.dispose();
+    _permanentAddressDetailsController.dispose();
     super.dispose();
   }
 
-  void _loadExistingData() {
+  void _loadExistingData() async {
     final addressInfo = ref.read(addressInfoProvider);
     if (addressInfo != null) {
       _addressDetailsController.text = addressInfo.addressDetails;
+      _permanentAddressDetailsController.text =
+          addressInfo.permanentAddressDetails;
+
+      // Check if permanent address is same as current address
+      final isSame =
+          addressInfo.division == addressInfo.permanentDivision &&
+          addressInfo.district == addressInfo.permanentDistrict &&
+          addressInfo.upazila == addressInfo.permanentUpazila &&
+          addressInfo.addressDetails == addressInfo.permanentAddressDetails;
+
+      setState(() {
+        _isSameAsCurrentAddress = isSame;
+      });
+
+      // Load permanent address selections if IDs exist and not same as current
+      if (!isSame && addressInfo.permanentDivision.isNotEmpty) {
+        // Fetch divisions first, then find and select the matching one
+        await _fetchPermanentDivisions();
+        if (mounted && _permanentDivisions.isNotEmpty) {
+          final permanentDiv = _permanentDivisions.firstWhere(
+            (d) => d.id == addressInfo.permanentDivision,
+            orElse: () => _permanentDivisions.first,
+          );
+          setState(() {
+            _selectedPermanentDivision = permanentDiv;
+          });
+          await _fetchPermanentDistricts(permanentDiv.id);
+
+          if (mounted &&
+              addressInfo.permanentDistrict.isNotEmpty &&
+              _permanentDistricts.isNotEmpty) {
+            final permanentDist = _permanentDistricts.firstWhere(
+              (d) => d.id == addressInfo.permanentDistrict,
+              orElse: () => _permanentDistricts.first,
+            );
+            setState(() {
+              _selectedPermanentDistrict = permanentDist;
+            });
+            await _fetchPermanentThanas(permanentDist.id);
+
+            if (mounted &&
+                addressInfo.permanentUpazila.isNotEmpty &&
+                _permanentThanas.isNotEmpty) {
+              final permanentThana = _permanentThanas.firstWhere(
+                (t) => t.id == addressInfo.permanentUpazila,
+                orElse: () => _permanentThanas.first,
+              );
+              setState(() {
+                _selectedPermanentThana = permanentThana;
+              });
+              await _fetchPermanentUnions(permanentThana.id);
+
+              if (mounted &&
+                  addressInfo.permanentUnion.isNotEmpty &&
+                  _permanentUnions.isNotEmpty) {
+                final permanentUnion = _permanentUnions.firstWhere(
+                  (u) => u.id == addressInfo.permanentUnion,
+                  orElse: () => _permanentUnions.first,
+                );
+                setState(() {
+                  _selectedPermanentUnion = permanentUnion;
+                });
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -102,6 +195,93 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
     }
   }
 
+  // Permanent address fetch methods
+  Future<void> _fetchPermanentDivisions() async {
+    setState(() {
+      _isLoadingPermanentDivisions = true;
+      _permanentDivisionError = null;
+    });
+    try {
+      final divisions = await ApiService.getDivisions();
+      if (!mounted) return;
+      setState(() {
+        _permanentDivisions = divisions;
+        _isLoadingPermanentDivisions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _permanentDivisionError = e.toString();
+        _isLoadingPermanentDivisions = false;
+      });
+    }
+  }
+
+  Future<void> _fetchPermanentDistricts(String divisionId) async {
+    setState(() {
+      _isLoadingPermanentDistricts = true;
+      _permanentDistrictError = null;
+    });
+    try {
+      final districts = await ApiService.getDistricts(
+        datadivisionId: divisionId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _permanentDistricts = districts;
+        _isLoadingPermanentDistricts = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _permanentDistrictError = e.toString();
+        _isLoadingPermanentDistricts = false;
+      });
+    }
+  }
+
+  Future<void> _fetchPermanentThanas(String districtId) async {
+    setState(() {
+      _isLoadingPermanentThanas = true;
+      _permanentThanaError = null;
+    });
+    try {
+      final thanas = await ApiService.getThanas(districtId: districtId);
+      if (!mounted) return;
+      setState(() {
+        _permanentThanas = thanas;
+        _isLoadingPermanentThanas = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _permanentThanaError = e.toString();
+        _isLoadingPermanentThanas = false;
+      });
+    }
+  }
+
+  Future<void> _fetchPermanentUnions(String upazillaId) async {
+    setState(() {
+      _isLoadingPermanentUnions = true;
+      _permanentUnionError = null;
+    });
+    try {
+      final unions = await ApiService.getUnions(upazillaId: upazillaId);
+      if (!mounted) return;
+      setState(() {
+        _permanentUnions = unions;
+        _isLoadingPermanentUnions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _permanentUnionError = e.toString();
+        _isLoadingPermanentUnions = false;
+      });
+    }
+  }
+
   void _saveAddressInfo() {
     final locationState = ref.read(locationDataProvider);
     if (locationState.selectedDivision == null ||
@@ -110,11 +290,44 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
       return;
     }
 
+    // If same as current address, use current address values
+    String permanentDivision;
+    String permanentDistrict;
+    String permanentUpazila;
+    String permanentUnion;
+    String permanentAddressDetails;
+
+    if (_isSameAsCurrentAddress) {
+      permanentDivision = locationState.selectedDivision!.id;
+      permanentDistrict = locationState.selectedDistrict!.id;
+      permanentUpazila = locationState.selectedThana!.id;
+      permanentUnion = locationState.selectedUnion?.id ?? '';
+      permanentAddressDetails = _addressDetailsController.text.trim();
+    } else {
+      // Validate permanent address fields
+      if (_selectedPermanentDivision == null ||
+          _selectedPermanentDistrict == null ||
+          _selectedPermanentThana == null ||
+          _selectedPermanentUnion == null) {
+        return;
+      }
+      permanentDivision = _selectedPermanentDivision!.id;
+      permanentDistrict = _selectedPermanentDistrict!.id;
+      permanentUpazila = _selectedPermanentThana!.id;
+      permanentUnion = _selectedPermanentUnion!.id;
+      permanentAddressDetails = _permanentAddressDetailsController.text.trim();
+    }
+
     final addressInfo = AddressInfo(
-      division: locationState.selectedDivision!.name,
-      district: locationState.selectedDistrict!.name,
-      upazila: locationState.selectedThana!.name,
+      division: locationState.selectedDivision!.id,
+      district: locationState.selectedDistrict!.id,
+      upazila: locationState.selectedThana!.id,
       addressDetails: _addressDetailsController.text.trim(),
+      permanentDivision: permanentDivision,
+      permanentDistrict: permanentDistrict,
+      permanentUpazila: permanentUpazila,
+      permanentUnion: permanentUnion,
+      permanentAddressDetails: permanentAddressDetails,
     );
 
     ref.read(applicationDataProvider.notifier).setAddressInfo(addressInfo);
@@ -151,6 +364,15 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                'Current Residential Address',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
               const Text(
                 'Please enter your current residential address',
                 style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
@@ -368,6 +590,294 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                   return null;
                 },
               ),
+              // Permanent Address Section
+              const Divider(height: 40),
+              const Text(
+                'Permanent Residential Address',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Please enter your permanent residential address',
+                style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 16),
+
+              // Same as current address option
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Same as current address',
+                  hintText: 'Please select',
+                ),
+                isExpanded: true,
+                value: _isSameAsCurrentAddress ? 'Yes' : 'No',
+                items: const [
+                  DropdownMenuItem(value: 'No', child: Text('No')),
+                  DropdownMenuItem(value: 'Yes', child: Text('Yes')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _isSameAsCurrentAddress = value == 'Yes';
+                    if (_isSameAsCurrentAddress) {
+                      // Clear permanent address selections when same as current
+                      _selectedPermanentDivision = null;
+                      _selectedPermanentDistrict = null;
+                      _selectedPermanentThana = null;
+                      _selectedPermanentUnion = null;
+                      _permanentDistricts = [];
+                      _permanentThanas = [];
+                      _permanentUnions = [];
+                      _permanentAddressDetailsController.clear();
+                    }
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select an option';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Show permanent address fields only if "No" is selected
+              if (!_isSameAsCurrentAddress) ...[
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Division',
+                    hintText: 'Please select',
+                  ),
+                  isExpanded: true,
+                  value: _selectedPermanentDivision?.id,
+                  items: _permanentDivisions
+                      .map(
+                        (d) => DropdownMenuItem<String>(
+                          value: d.id,
+                          child: Text(d.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _isLoadingPermanentDivisions
+                      ? null
+                      : (value) {
+                          final selected = _permanentDivisions.firstWhere(
+                            (d) => d.id == value,
+                          );
+                          setState(() {
+                            _selectedPermanentDivision = selected;
+                            _selectedPermanentDistrict = null;
+                            _selectedPermanentThana = null;
+                            _selectedPermanentUnion = null;
+                            _permanentDistricts = [];
+                            _permanentThanas = [];
+                            _permanentUnions = [];
+                          });
+                          _fetchPermanentDistricts(selected.id);
+                        },
+                  validator: (value) {
+                    if (!_isSameAsCurrentAddress) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a division';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                if (_isLoadingPermanentDivisions)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                if (_permanentDivisionError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _permanentDivisionError!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'District',
+                    hintText: 'Please select',
+                  ),
+                  isExpanded: true,
+                  value: _selectedPermanentDistrict?.id,
+                  items: _permanentDistricts
+                      .map(
+                        (d) => DropdownMenuItem<String>(
+                          value: d.id,
+                          child: Text(d.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged:
+                      (_isLoadingPermanentDistricts ||
+                          _permanentDistricts.isEmpty)
+                      ? null
+                      : (value) {
+                          final selected = _permanentDistricts.firstWhere(
+                            (d) => d.id == value,
+                          );
+                          setState(() {
+                            _selectedPermanentDistrict = selected;
+                            _selectedPermanentThana = null;
+                            _selectedPermanentUnion = null;
+                            _permanentThanas = [];
+                            _permanentUnions = [];
+                          });
+                          _fetchPermanentThanas(selected.id);
+                        },
+                  validator: (value) {
+                    if (!_isSameAsCurrentAddress) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a district';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                if (_isLoadingPermanentDistricts)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                if (_permanentDistrictError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _permanentDistrictError!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Upazila/Thana',
+                    hintText: 'Please select',
+                  ),
+                  isExpanded: true,
+                  value: _selectedPermanentThana?.id,
+                  items: _permanentThanas
+                      .map(
+                        (t) => DropdownMenuItem<String>(
+                          value: t.id,
+                          child: Text(t.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged:
+                      (_isLoadingPermanentThanas || _permanentThanas.isEmpty)
+                      ? null
+                      : (value) {
+                          final selected = _permanentThanas.firstWhere(
+                            (t) => t.id == value,
+                          );
+                          setState(() {
+                            _selectedPermanentThana = selected;
+                            _selectedPermanentUnion = null;
+                            _permanentUnions = [];
+                          });
+                          _fetchPermanentUnions(selected.id);
+                        },
+                  validator: (value) {
+                    if (!_isSameAsCurrentAddress) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a thana/upazila';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                if (_isLoadingPermanentThanas)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                if (_permanentThanaError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _permanentThanaError!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Union',
+                    hintText: 'Please select',
+                  ),
+                  isExpanded: true,
+                  value: _selectedPermanentUnion?.id,
+                  items: _permanentUnions
+                      .map(
+                        (u) => DropdownMenuItem<String>(
+                          value: u.id,
+                          child: Text(u.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged:
+                      (_isLoadingPermanentUnions || _permanentUnions.isEmpty)
+                      ? null
+                      : (value) {
+                          final selected = _permanentUnions.firstWhere(
+                            (u) => u.id == value,
+                          );
+                          setState(() {
+                            _selectedPermanentUnion = selected;
+                          });
+                        },
+                  validator: (value) {
+                    if (!_isSameAsCurrentAddress) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a union';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                if (_isLoadingPermanentUnions)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                if (_permanentUnionError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _permanentUnionError!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _permanentAddressDetailsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Permanent Address Details',
+                    hintText: 'Enter your permanent address',
+                  ),
+                  maxLines: 3,
+                  validator: (value) {
+                    if (!_isSameAsCurrentAddress) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter permanent address details';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 40),
 
               SizedBox(
