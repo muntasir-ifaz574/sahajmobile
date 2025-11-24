@@ -725,4 +725,28 @@ class ApiService {
       throw _handleError(e);
     }
   }
+
+  static Future<String> getFinancialInfo({required String applicationId}) async {
+    try {
+      final response = await _dio.post(
+        '/get_financial_info',
+        data: FormData.fromMap({'id': applicationId}),
+      );
+      final dynamic raw = response.data;
+      final Map<String, dynamic> data = raw is String
+          ? (jsonDecode(raw) as Map<String, dynamic>)
+          : (raw as Map<String, dynamic>);
+      if ((data['status'] as int?) == 1) {
+        final result = data['result']?.toString();
+        if (result != null && result.trim().isNotEmpty) {
+          return result;
+        }
+        return data['message']?.toString() ?? 'No financial info available.';
+      }
+      final message = data['message']?.toString() ?? 'Unable to fetch data';
+      throw Exception(message);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
 }

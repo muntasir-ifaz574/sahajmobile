@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/api_service.dart';
 
@@ -41,6 +43,13 @@ class _BoldValueText extends StatelessWidget {
   }
 }
 
+class _FinancialInfoItem {
+  final String label;
+  final String value;
+
+  const _FinancialInfoItem({required this.label, required this.value});
+}
+
 class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _applications = [];
@@ -50,6 +59,10 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   final Set<String> _expandedItems = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  final Map<String, String> _financialInfoData = {};
+  final Map<String, String> _financialInfoErrors = {};
+  final Set<String> _financialInfoLoading = {};
+  final Set<String> _financialInfoExpanded = {};
 
   @override
   void initState() {
@@ -178,6 +191,205 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     });
 
     return filtered;
+  }
+
+  List<_FinancialInfoItem> _extractFinancialInfoItems(String? data) {
+    if (data == null || data.trim().isEmpty) {
+      return const [];
+    }
+
+    final lines = data
+        .replaceAll('\t', ' ')
+        .split(RegExp(r'\r\n|\n'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    final entries = <MapEntry<String, String>>[];
+    for (final line in lines) {
+      final separatorIndex = line.indexOf(':');
+      if (separatorIndex == -1) continue;
+      final key = line.substring(0, separatorIndex).trim();
+      final value = line.substring(separatorIndex + 1).trim();
+      if (key.isEmpty || value.isEmpty) continue;
+      entries.add(MapEntry(key, value));
+    }
+
+    MapEntry<String, String>? findEntry(List<String> needles) {
+      for (final entry in entries) {
+        final keyLower = entry.key.toLowerCase();
+        if (needles.any((needle) => keyLower.contains(needle))) {
+          return entry;
+        }
+      }
+      return null;
+    }
+
+    final items = <_FinancialInfoItem>[];
+
+    void addItem({
+      required List<String> keys,
+      required String label,
+      String Function(MapEntry<String, String>)? valueBuilder,
+    }) {
+      final entry = findEntry(keys);
+      if (entry == null || entry.key.isEmpty) return;
+      final value = valueBuilder != null
+          ? valueBuilder(entry)
+          : entry.value.trim();
+      if (value.isEmpty) return;
+      items.add(_FinancialInfoItem(label: label, value: value));
+    }
+
+    addItem(keys: ['emi plan'], label: 'EMI Plan');
+
+    addItem(keys: ['mrp'], label: 'Cell Phone Price');
+
+    addItem(
+      keys: ['emi charge'],
+      label: 'EMI Charge',
+      valueBuilder: (entry) => entry.value.replaceAll('(+) ', '').trim(),
+    );
+
+    addItem(
+      keys: ['net price with emi charge'],
+      label: 'Total Price with EMI Charge',
+    );
+
+    addItem(
+      keys: ['down-payment', 'down payment'],
+      label: 'Down Payment',
+      valueBuilder: (entry) {
+        final amount = entry.value;
+        final percentMatch = RegExp(
+          r'([0-9]+(?:\.[0-9]+)?)\s*%',
+        ).firstMatch(entry.key);
+        if (percentMatch != null) {
+          final percent = double.tryParse(percentMatch.group(1) ?? '');
+          if (percent != null) {
+            final formatted = percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2);
+            return '$amount ($formatted%)';
+          }
+          return '$amount (${percentMatch.group(1)}%)';
+        }
+        return amount;
+      },
+    );
+
+    addItem(
+      keys: ['net instalment amount', 'net installment amount'],
+      label: 'Total Installment Amount',
+    );
+
+    final paymentEntry = findEntry(['weekly payment', 'monthly payment']);
+    if (paymentEntry != null && paymentEntry.key.isNotEmpty) {
+      final label = paymentEntry.key.toLowerCase().contains('weekly')
+          ? 'Weekly Payment'
+          : 'Monthly Payment';
+      items.add(
+        _FinancialInfoItem(label: label, value: paymentEntry.value.trim()),
+      );
+    }
+
+    addItem(
+      keys: ['instalment start date', 'installment start date'],
+      label: 'Installment Start Date',
+    );
+
+    addItem(keys: ['emi payment portal'], label: 'EMI Payment Portal');
+
+    return items;
+  }
+
+  Future<void> _toggleFinancialInfo(String id) async {
+    if (_financialInfoExpanded.contains(id)) {
+      setState(() {
+        _financialInfoExpanded.remove(id);
+      });
+      return;
+    }
+
+    if (_financialInfoData.containsKey(id)) {
+      setState(() {
+        _financialInfoExpanded.add(id);
+      });
+      return;
+    }
+
+    setState(() {
+      _financialInfoLoading.add(id);
+      _financialInfoErrors.remove(id);
+    });
+
+    try {
+      final info = await ApiService.getFinancialInfo(applicationId: id);
+      if (!mounted) return;
+      final trimmed = info.trim();
+      final isEmptyResult =
+          trimmed.isEmpty ||
+          trimmed == '{}' ||
+          trimmed == '[]' ||
+          trimmed.toLowerCase() == 'null';
+      if (isEmptyResult) {
+        setState(() {
+          _financialInfoData.remove(id);
+          _financialInfoErrors.remove(id);
+          _financialInfoExpanded.remove(id);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Financial info not found')),
+        );
+        return;
+      }
+      setState(() {
+        _financialInfoErrors.remove(id);
+        _financialInfoData[id] = info;
+        _financialInfoExpanded.add(id);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _financialInfoErrors[id] = e.toString();
+        _financialInfoExpanded.remove(id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Financial info unavailable')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _financialInfoLoading.remove(id);
+      });
+    }
+  }
+
+  void _copyFinancialInfo(String id) {
+    final data = _financialInfoData[id];
+    if (data == null) return;
+    Clipboard.setData(ClipboardData(text: data));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Financial info copied')));
+  }
+
+  Future<void> _shareFinancialInfo(String id) async {
+    final data = _financialInfoData[id];
+    if (data == null) return;
+    try {
+      await Share.share(data, subject: 'Financial Information');
+    } on MissingPluginException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sharing is not supported on this device'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to share: $e')));
+    }
   }
 
   @override
@@ -573,8 +785,154 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                   : CrossFadeState.showFirst,
               duration: const Duration(milliseconds: 300),
             ),
+          _buildFinancialInfoSection(id),
         ],
       ),
+    );
+  }
+
+  Widget _buildFinancialInfoSection(String id) {
+    final isExpanded = _financialInfoExpanded.contains(id);
+    final isLoading = _financialInfoLoading.contains(id);
+    final error = _financialInfoErrors[id];
+    final data = _financialInfoData[id];
+
+    return Column(
+      children: [
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(
+                    isExpanded ? 'Hide financial info' : 'Financial info',
+                  ),
+                  onPressed: () => _toggleFinancialInfo(id),
+                ),
+              ),
+              if (isLoading) ...[
+                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            ],
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: _buildFinancialInfoContent(id, data, error),
+          crossFadeState: isExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 250),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFinancialInfoContent(String id, String? data, String? error) {
+    Widget child;
+    if (error != null) {
+      child = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Unable to load financial info',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.errorColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            error,
+            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => _toggleFinancialInfo(id),
+              child: const Text('Retry'),
+            ),
+          ),
+        ],
+      );
+    } else if (data == null) {
+      child = const Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Fetching financial info...',
+          style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+        ),
+      );
+    } else {
+      final items = _extractFinancialInfoItems(data);
+      child = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (items.isEmpty)
+            const Text(
+              'Financial info not available.',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            )
+          else
+            ...items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SelectableText.rich(
+                  TextSpan(
+                    text: '${item.label}: ',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: item.value,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.normal,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () => _copyFinancialInfo(id),
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copy'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: () => _shareFinancialInfo(id),
+                icon: const Icon(Icons.share, size: 18),
+                label: const Text('Share'),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: child,
     );
   }
 }
