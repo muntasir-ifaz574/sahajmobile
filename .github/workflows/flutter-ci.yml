@@ -79,7 +79,7 @@ jobs:
         run: flutter pub get
 
       - name: Run integration tests (optional)
-        run: flutter test integration_test/  # Adjust path if needed
+        run: flutter test integration_test/
 
       - name: Create signing key
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/key.jks
@@ -162,6 +162,12 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
+      - name: Extract Release Notes from releasenote.md
+        id: changelog
+        uses: ffurrer2/extract-release-notes@v1
+        with:
+          changelog_file: releasenote.md
+
       - name: Deploy to Play Store
         uses: r0adkll/upload-google-play@v1.1.1
         with:
@@ -169,3 +175,5 @@ jobs:
           packageName: com.example.app
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: production
+          releaseNotes: ${{ steps.changelog.outputs.release_notes }}
+          status: completed
