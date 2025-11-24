@@ -19,15 +19,17 @@ jobs:
           flutter-version: '3.38.1'
           channel: 'stable'
 
-      - name: Cache Flutter dependencies
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
             .dart_tool
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-flutter-gradle-${{ hashFiles('**/pubspec.lock', '**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
-            ${{ runner.os }}-flutter-
+            ${{ runner.os }}-flutter-gradle-
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -36,7 +38,10 @@ jobs:
         run: flutter test
 
       - name: Build Test APK
-        run: flutter build apk --debug --dart-define=BASE_URL=${{ secrets.TEST_BASE_URL }}
+        run: flutter build apk --debug
+          --dart-define=BASE_URL=${{ secrets.TEST_BASE_URL }}
+          --dart-define=API_KEY=${{ secrets.TEST_API_KEY || '' }}
+          --dart-define=ANALYTICS_TOKEN=${{ secrets.TEST_ANALYTICS_TOKEN || '' }}
 
       - name: Upload Test APK artifact
         uses: actions/upload-artifact@v4
@@ -58,35 +63,26 @@ jobs:
           flutter-version: '3.38.1'
           channel: 'stable'
 
-      - name: Cache Flutter dependencies
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
             .dart_tool
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-flutter-gradle-${{ hashFiles('**/pubspec.lock', '**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-flutter-gradle-
 
       - name: Get Flutter dependencies
         run: flutter pub get
 
       - name: Run integration tests (optional)
-        run: flutter test integration_test/
+        run: flutter test integration_test/  # Adjust path if needed
 
       - name: Create signing key
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/key.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/key.jks
 
       - name: Create key.properties
         run: |
@@ -98,7 +94,10 @@ jobs:
           EOF
 
       - name: Build Stage split APKs
-        run: flutter build apk --release --split-per-abi --dart-define=BASE_URL=${{ secrets.STAGE_BASE_URL }}
+        run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=./debug-info/
+          --dart-define=BASE_URL=${{ secrets.STAGE_BASE_URL }}
+          --dart-define=API_KEY=${{ secrets.STAGE_API_KEY }}
+          --dart-define=ANALYTICS_TOKEN=${{ secrets.STAGE_ANALYTICS_TOKEN || '' }}
 
       - name: Upload Stage APKs artifact
         uses: actions/upload-artifact@v4
@@ -120,25 +119,17 @@ jobs:
           flutter-version: '3.38.1'
           channel: 'stable'
 
-      - name: Cache Flutter dependencies
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
             .dart_tool
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-flutter-gradle-${{ hashFiles('**/pubspec.lock', '**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-flutter-gradle-
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -147,8 +138,7 @@ jobs:
         run: flutter analyze
 
       - name: Create signing key
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/key.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/key.jks
 
       - name: Create key.properties
         run: |
@@ -160,7 +150,10 @@ jobs:
           EOF
 
       - name: Build Production AAB
-        run: flutter build appbundle --release --dart-define=BASE_URL=${{ secrets.PROD_BASE_URL }}
+        run: flutter build appbundle --release --obfuscate --split-debug-info=./debug-info/
+          --dart-define=BASE_URL=${{ secrets.PROD_BASE_URL }}
+          --dart-define=API_KEY=${{ secrets.PROD_API_KEY }}
+          --dart-define=ANALYTICS_TOKEN=${{ secrets.PROD_ANALYTICS_TOKEN || '' }}
 
       - name: Upload Production AAB artifact
         uses: actions/upload-artifact@v4
@@ -168,3 +161,11 @@ jobs:
           name: production-aab
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
+
+      - name: Deploy to Play Store
+        uses: r0adkll/upload-google-play@v1.1.1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_JSON }}
+          packageName: com.example.app
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
