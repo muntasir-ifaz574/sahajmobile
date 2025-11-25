@@ -163,6 +163,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'birthDate': personal.dateOfBirth.toIso8601String().split('T').first,
         'occupation': job.occupation,
         'comnpany_name': job.companyName,
+        'worker_office_address': job.officeAddress ?? '',
         'monthly_income': job.monthlyIncome.toString(),
         'certifier_mobile': job.certifierPhone,
         'work_certifier': job.certifierName,
@@ -175,7 +176,8 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'guarantor_nid': guarantor.nidNumber,
         'gaurantor_mobile': guarantor.phoneNumber,
         'present_residential_address_customer': address.addressDetails,
-        'permanent_residential_address_customer': address.permanentAddressDetails,
+        'permanent_residential_address_customer':
+            address.permanentAddressDetails,
         'present_residential_address': guarantor.presentAddress,
         'permanent_residential_address': guarantor.permanentAddress,
         'guarantor_dob': guarantor.dateOfBirth
@@ -201,8 +203,8 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'front_nid': personal.nidFrontImage,
         'back_nid': personal.nidBackImage,
         'job_front': job.workIdFrontImage,
-        // 'job_back': job.workIdBackImage,
-        'job_back_s': job.workIdBackImage,
+        'job_back': job.workIdBackImage,
+        // 'job_back_s': job.workIdBackImage,
         'gaurantor_front_nid': guarantor.nidFrontImage,
         'gaurantor_back_nid': guarantor.nidBackImage,
         'bKash_statement': finalBkashPath,

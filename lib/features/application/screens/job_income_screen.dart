@@ -26,6 +26,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _occupationController = TextEditingController();
   final _companyNameController = TextEditingController();
+  final _officeAddressController = TextEditingController();
   final _certifierNameController = TextEditingController();
   final _certifierMobileController = TextEditingController();
   final _monthlyIncomeController = TextEditingController();
@@ -54,6 +55,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   void dispose() {
     _occupationController.dispose();
     _companyNameController.dispose();
+    _officeAddressController.dispose();
     _certifierNameController.dispose();
     _certifierMobileController.dispose();
     _monthlyIncomeController.dispose();
@@ -68,6 +70,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     if (jobInfo != null) {
       _occupationController.text = jobInfo.occupation;
       _companyNameController.text = jobInfo.companyName;
+      _officeAddressController.text = jobInfo.officeAddress ?? '';
       _certifierNameController.text = jobInfo.certifierName;
       _certifierMobileController.text = jobInfo.certifierPhone;
       _monthlyIncomeController.text = jobInfo.monthlyIncome.toString();
@@ -118,6 +121,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
       monthlyIncome: double.tryParse(_monthlyIncomeController.text) ?? 0.0,
       workIdFrontImage: _frontWorkIdImage?.path,
       workIdBackImage: _backWorkIdImage?.path,
+      officeAddress: _officeAddressController.text.trim().isNotEmpty
+          ? _officeAddressController.text.trim()
+          : null,
     );
 
     ref.read(applicationDataProvider.notifier).setJobInfo(jobInfo);
@@ -659,6 +665,24 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your company name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Office Address
+              TextFormField(
+                controller: _officeAddressController,
+                decoration: const InputDecoration(
+                  labelText: 'Office Address',
+                  hintText: 'Please enter your office address',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your office address';
                   }
                   return null;
                 },

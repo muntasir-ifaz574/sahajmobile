@@ -120,6 +120,7 @@ class JobInfo {
   final double monthlyIncome;
   final String? workIdFrontImage;
   final String? workIdBackImage;
+  final String? officeAddress;
 
   const JobInfo({
     required this.occupation,
@@ -130,6 +131,7 @@ class JobInfo {
     required this.monthlyIncome,
     this.workIdFrontImage,
     this.workIdBackImage,
+    this.officeAddress,
   });
 
   factory JobInfo.fromJson(Map<String, dynamic> json) =>

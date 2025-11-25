@@ -118,6 +118,7 @@ JobInfo _$JobInfoFromJson(Map<String, dynamic> json) => JobInfo(
   monthlyIncome: (json['monthlyIncome'] as num).toDouble(),
   workIdFrontImage: json['workIdFrontImage'] as String?,
   workIdBackImage: json['workIdBackImage'] as String?,
+  officeAddress: json['officeAddress'] as String?,
 );
 
 Map<String, dynamic> _$JobInfoToJson(JobInfo instance) => <String, dynamic>{
@@ -129,6 +130,7 @@ Map<String, dynamic> _$JobInfoToJson(JobInfo instance) => <String, dynamic>{
   'monthlyIncome': instance.monthlyIncome,
   'workIdFrontImage': instance.workIdFrontImage,
   'workIdBackImage': instance.workIdBackImage,
+  'officeAddress': instance.officeAddress,
 };
 
 GuarantorInfo _$GuarantorInfoFromJson(Map<String, dynamic> json) =>

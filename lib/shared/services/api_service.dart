@@ -198,8 +198,8 @@ class ApiService {
         'front_nid',
         'back_nid',
         'job_front',
-        // 'job_back',
-        'job_back_s',
+        'job_back',
+        // 'job_back_s',
         'gaurantor_front_nid',
         'gaurantor_back_nid',
       ];
@@ -247,7 +247,7 @@ class ApiService {
       );
 
       final response = await _dio.post(
-        '/customer_verify_and_saves',
+        '/customer_verify_and_save',
         data: formData,
       );
 
