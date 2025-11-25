@@ -385,7 +385,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                   hintText: 'Please select',
                 ),
                 isExpanded: true,
-                value: locationState.selectedDivision?.id,
+                value: locationState.selectedDivision != null &&
+                        locationState.divisions
+                            .any((d) => d.id == locationState.selectedDivision!.id)
+                    ? locationState.selectedDivision!.id
+                    : null,
                 items: locationState.divisions
                     .map(
                       (d) => DropdownMenuItem<String>(
@@ -433,7 +437,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                   hintText: 'Please select',
                 ),
                 isExpanded: true,
-                value: locationState.selectedDistrict?.id,
+                value: locationState.selectedDistrict != null &&
+                        locationState.districts
+                            .any((d) => d.id == locationState.selectedDistrict!.id)
+                    ? locationState.selectedDistrict!.id
+                    : null,
                 items: locationState.districts
                     .map(
                       (d) => DropdownMenuItem<String>(
@@ -483,7 +491,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                   hintText: 'Please select',
                 ),
                 isExpanded: true,
-                value: locationState.selectedThana?.id,
+                value: locationState.selectedThana != null &&
+                        locationState.thanas
+                            .any((t) => t.id == locationState.selectedThana!.id)
+                    ? locationState.selectedThana!.id
+                    : null,
                 items: locationState.thanas
                     .map(
                       (t) => DropdownMenuItem<String>(
@@ -533,7 +545,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                   hintText: 'Please select',
                 ),
                 isExpanded: true,
-                value: locationState.selectedUnion?.id,
+                value: locationState.selectedUnion != null &&
+                        locationState.unions
+                            .any((u) => u.id == locationState.selectedUnion!.id)
+                    ? locationState.selectedUnion!.id
+                    : null,
                 items: locationState.unions
                     .map(
                       (u) => DropdownMenuItem<String>(
@@ -652,7 +668,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                     hintText: 'Please select',
                   ),
                   isExpanded: true,
-                  value: _selectedPermanentDivision?.id,
+                  value: _selectedPermanentDivision != null &&
+                          _permanentDivisions
+                              .any((d) => d.id == _selectedPermanentDivision!.id)
+                      ? _selectedPermanentDivision!.id
+                      : null,
                   items: _permanentDivisions
                       .map(
                         (d) => DropdownMenuItem<String>(
@@ -708,7 +728,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                     hintText: 'Please select',
                   ),
                   isExpanded: true,
-                  value: _selectedPermanentDistrict?.id,
+                  value: _selectedPermanentDistrict != null &&
+                          _permanentDistricts
+                              .any((d) => d.id == _selectedPermanentDistrict!.id)
+                      ? _selectedPermanentDistrict!.id
+                      : null,
                   items: _permanentDistricts
                       .map(
                         (d) => DropdownMenuItem<String>(
@@ -764,7 +788,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                     hintText: 'Please select',
                   ),
                   isExpanded: true,
-                  value: _selectedPermanentThana?.id,
+                  value: _selectedPermanentThana != null &&
+                          _permanentThanas
+                              .any((t) => t.id == _selectedPermanentThana!.id)
+                      ? _selectedPermanentThana!.id
+                      : null,
                   items: _permanentThanas
                       .map(
                         (t) => DropdownMenuItem<String>(
@@ -817,7 +845,11 @@ class _AddressInfoScreenState extends ConsumerState<AddressInfoScreen> {
                     hintText: 'Please select',
                   ),
                   isExpanded: true,
-                  value: _selectedPermanentUnion?.id,
+                  value: _selectedPermanentUnion != null &&
+                          _permanentUnions
+                              .any((u) => u.id == _selectedPermanentUnion!.id)
+                      ? _selectedPermanentUnion!.id
+                      : null,
                   items: _permanentUnions
                       .map(
                         (u) => DropdownMenuItem<String>(
