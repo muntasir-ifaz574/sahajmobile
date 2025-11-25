@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/application_model.dart';
 import '../../../shared/providers/application_provider.dart';
 import '../../../shared/services/bkash_statement_ocr_service.dart';
-import '../../../shared/providers/nid_provider.dart';
 
 class JobIncomeScreen extends ConsumerStatefulWidget {
   const JobIncomeScreen({super.key});
@@ -21,6 +20,9 @@ class JobIncomeScreen extends ConsumerStatefulWidget {
 }
 
 class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
+  // Keep uploads below backend's ~20MB limit by capping resolution/quality.
+  static const double _jobIdImageMaxDimension = 1600;
+  static const int _jobIdImageQuality = 75;
   final _formKey = GlobalKey<FormState>();
   final _occupationController = TextEditingController();
   final _companyNameController = TextEditingController();
@@ -142,7 +144,12 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   Future<void> _pickFrontJobIdImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: _jobIdImageQuality,
+        maxWidth: _jobIdImageMaxDimension,
+        maxHeight: _jobIdImageMaxDimension,
+      );
       if (image != null) {
         setState(() {
           _frontWorkIdImage = File(image.path);
@@ -161,7 +168,12 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   Future<void> _captureFrontJobIdImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: _jobIdImageQuality,
+        maxWidth: _jobIdImageMaxDimension,
+        maxHeight: _jobIdImageMaxDimension,
+      );
       if (image != null) {
         setState(() {
           _frontWorkIdImage = File(image.path);
@@ -180,7 +192,12 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   Future<void> _pickBackJobIdImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: _jobIdImageQuality,
+        maxWidth: _jobIdImageMaxDimension,
+        maxHeight: _jobIdImageMaxDimension,
+      );
       if (image != null) {
         setState(() {
           _backWorkIdImage = File(image.path);
@@ -199,7 +216,12 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   Future<void> _captureBackJobIdImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.camera);
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: _jobIdImageQuality,
+        maxWidth: _jobIdImageMaxDimension,
+        maxHeight: _jobIdImageMaxDimension,
+      );
       if (image != null) {
         setState(() {
           _backWorkIdImage = File(image.path);

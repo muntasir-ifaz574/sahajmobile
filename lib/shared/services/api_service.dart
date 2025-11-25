@@ -84,6 +84,10 @@ class ApiService {
 
       final Map<String, dynamic> payload = {...textFields};
 
+      developer.log(
+        '=== Text Field: ${textFields} ===',
+        name: 'ApiService',
+      );
       // Verify and attach files with detailed logging
       final List<String> uploadedFiles = [];
       final List<String> missingFiles = [];
@@ -194,7 +198,8 @@ class ApiService {
         'front_nid',
         'back_nid',
         'job_front',
-        'job_back',
+        // 'job_back',
+        'job_back_s',
         'gaurantor_front_nid',
         'gaurantor_back_nid',
       ];
@@ -242,7 +247,7 @@ class ApiService {
       );
 
       final response = await _dio.post(
-        '/customer_verify_and_save',
+        '/customer_verify_and_saves',
         data: formData,
       );
 
