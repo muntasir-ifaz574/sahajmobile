@@ -135,6 +135,19 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
+                          // Validate contact number is mandatory
+                          final contactNumber =
+                              ref.read(nidProvider).contactNumber ?? '';
+                          if (contactNumber.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Contact number is required'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                            return;
+                          }
+
                           // Persist personal info into application provider
                           try {
                             final parsedDob = _parseDobToDateTime(
@@ -525,9 +538,18 @@ class _ContactNumberTextFieldState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Contact Number',
-            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          Row(
+            children: [
+              const Text(
+                'Contact Number',
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                '*',
+                style: TextStyle(fontSize: 14, color: AppTheme.errorColor),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           TextField(
