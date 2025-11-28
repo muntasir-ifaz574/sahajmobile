@@ -130,11 +130,29 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     // Contact Number (editable text field)
                     _buildContactNumberField(ref),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Contact number is required',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textHint),
+                    ),
                     const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
+                          // Validate contact number is mandatory
+                          final currentContactNumber =
+                              ref.read(nidProvider).contactNumber ?? '';
+                          if (currentContactNumber.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Contact number is required'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                            return;
+                          }
+
                           // Persist personal info into application provider
                           try {
                             final parsedDob = _parseDobToDateTime(
@@ -507,6 +525,7 @@ class _ContactNumberTextFieldState
   Widget build(BuildContext context) {
     // Watch for external changes (from OCR or other sources)
     final contactNumber = ref.watch(nidProvider).contactNumber ?? '';
+    final hasError = contactNumber.trim().isEmpty;
 
     // Only update controller if value changed externally (not from user typing)
     if (!_isUserTyping && _controller.text != contactNumber) {
@@ -537,15 +556,22 @@ class _ContactNumberTextFieldState
               hintStyle: TextStyle(fontSize: 14, color: AppTheme.textHint),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.borderColor),
+                borderSide: BorderSide(
+                  color: hasError ? AppTheme.errorColor : AppTheme.borderColor,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.borderColor),
+                borderSide: BorderSide(
+                  color: hasError ? AppTheme.errorColor : AppTheme.borderColor,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                borderSide: BorderSide(
+                  color: hasError ? AppTheme.errorColor : AppTheme.primaryColor,
+                  width: 2,
+                ),
               ),
               filled: true,
               fillColor: Colors.white,
