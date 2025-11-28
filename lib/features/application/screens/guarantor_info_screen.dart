@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/services/nid_ocr_service.dart';
 import '../../../shared/models/application_model.dart';
 import '../../../shared/providers/application_provider.dart';
+import '../../../shared/services/image_compression_service.dart';
+import '../../../shared/services/nid_ocr_service.dart';
 
 class GuarantorInfoScreen extends ConsumerStatefulWidget {
   const GuarantorInfoScreen({super.key});
@@ -31,6 +32,7 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
   String? _frontImagePath;
   String? _backImagePath;
   bool _isProcessing = false;
+  bool _isCompressingImage = false;
   String? _errorMessage;
 
   @override
@@ -271,6 +273,7 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
       );
 
       if (image != null) {
+        // Immediately mark the selected side as having an image, so the UI updates
         setState(() {
           if (isFront) {
             _frontImagePath = image.path;
@@ -278,7 +281,25 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
             _backImagePath = image.path;
           }
           _errorMessage = null;
+          _isCompressingImage = true;
         });
+
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          setState(() {
+            if (isFront) {
+              _frontImagePath = compressed.path;
+            } else {
+              _backImagePath = compressed.path;
+            }
+          });
+        } finally {
+          setState(() {
+            _isCompressingImage = false;
+          });
+        }
 
         // Process images if both are available
         if (_frontImagePath != null && _backImagePath != null) {
@@ -541,7 +562,9 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isProcessing ? null : () => _pickImage(true),
+                      onPressed: (_isProcessing || _isCompressingImage)
+                          ? null
+                          : () => _pickImage(true),
                       icon: _frontImagePath != null
                           ? const Icon(Icons.check_circle, color: Colors.green)
                           : const Icon(Icons.add),
@@ -561,7 +584,9 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isProcessing ? null : () => _pickImage(false),
+                      onPressed: (_isProcessing || _isCompressingImage)
+                          ? null
+                          : () => _pickImage(false),
                       icon: _backImagePath != null
                           ? const Icon(Icons.check_circle, color: Colors.green)
                           : const Icon(Icons.add),
@@ -579,8 +604,8 @@ class _GuarantorInfoScreenState extends ConsumerState<GuarantorInfoScreen> {
                 ],
               ),
 
-              // Processing indicator
-              if (_isProcessing) ...[
+              // Processing / compression indicator
+              if (_isProcessing || _isCompressingImage) ...[
                 const SizedBox(height: 16),
                 const Center(
                   child: Column(

@@ -1,6 +1,9 @@
 import 'dart:math' as math;
+
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+
+import 'image_compression_service.dart';
 
 class NidOcrService {
   static final TextRecognizer _textRecognizer = TextRecognizer();
@@ -74,9 +77,14 @@ class NidOcrService {
             if (currentSection != null && valueBuffer.isNotEmpty) {
               String bufferedValue = valueBuffer.join(' ').trim();
               // Simple dedup for messy OCR
-              bufferedValue = bufferedValue.split(' ').where((word) => word.isNotEmpty).join(' ');
+              bufferedValue = bufferedValue
+                  .split(' ')
+                  .where((word) => word.isNotEmpty)
+                  .join(' ');
               // Clean leading/trailing colons and excessive spaces
-              bufferedValue = bufferedValue.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+              bufferedValue = bufferedValue
+                  .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                  .trim();
               // Field-specific cleaning
               bufferedValue = _cleanFieldValue(currentSection, bufferedValue);
               parsedFields[currentSection] = bufferedValue;
@@ -87,7 +95,9 @@ class NidOcrService {
 
             // Extract remaining value from this line (pre-clean colon)
             String remaining = originalLine.replaceAll(label, '').trim();
-            remaining = remaining.replaceAll(RegExp(r'^[:\s]+'), '').trim(); // Remove leading colon/spaces
+            remaining = remaining
+                .replaceAll(RegExp(r'^[:\s]+'), '')
+                .trim(); // Remove leading colon/spaces
             if (remaining.isNotEmpty) {
               valueBuffer.add(remaining);
             }
@@ -108,9 +118,14 @@ class NidOcrService {
       // Process last buffer
       if (currentSection != null && valueBuffer.isNotEmpty) {
         String bufferedValue = valueBuffer.join(' ').trim();
-        bufferedValue = bufferedValue.split(' ').where((word) => word.isNotEmpty).join(' ');
+        bufferedValue = bufferedValue
+            .split(' ')
+            .where((word) => word.isNotEmpty)
+            .join(' ');
         // Clean leading/trailing colons and excessive spaces
-        bufferedValue = bufferedValue.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+        bufferedValue = bufferedValue
+            .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+            .trim();
         // Field-specific cleaning
         bufferedValue = _cleanFieldValue(currentSection, bufferedValue);
         parsedFields[currentSection] = bufferedValue;
@@ -147,7 +162,9 @@ class NidOcrService {
             // Prioritize English name
             for (int j = i + 1; j < lines.length && j < i + 5; j++) {
               String nameLine = lines[j].trim();
-              nameLine = nameLine.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+              nameLine = nameLine
+                  .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                  .trim();
               if (nameLine.isNotEmpty &&
                   !nameLine.contains('পিতা') &&
                   !nameLine.contains('মাতা') &&
@@ -165,7 +182,9 @@ class NidOcrService {
             // Fallback to Bengali if no English found
             if (fullName.isEmpty && i + 1 < lines.length) {
               String nextLine = lines[i + 1].trim();
-              nextLine = nextLine.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+              nextLine = nextLine
+                  .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                  .trim();
               if (nextLine.contains(RegExp(r'[\u0980-\u09FF]'))) {
                 fullName = nextLine;
               }
@@ -196,10 +215,16 @@ class NidOcrService {
           if (_isPotentialDate(line)) {
             bool isIssueContext = false;
             // Check context +/- 2 lines
-            for (int k = math.max(0, i - 2); k <= math.min(lines.length - 1, i + 2); k++) {
+            for (
+              int k = math.max(0, i - 2);
+              k <= math.min(lines.length - 1, i + 2);
+              k++
+            ) {
               if (k != i) {
                 String contextLine = lines[k].toLowerCase();
-                if (issueKeywords.any((keyword) => contextLine.contains(keyword))) {
+                if (issueKeywords.any(
+                  (keyword) => contextLine.contains(keyword),
+                )) {
                   isIssueContext = true;
                   break;
                 }
@@ -300,7 +325,9 @@ class NidOcrService {
                 .replaceAll('ঃ', '')
                 .replaceAll(':', '')
                 .trim();
-            nameText = nameText.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+            nameText = nameText
+                .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                .trim();
             // Apply name-specific cleaning
             nameText = _cleanName(nameText);
 
@@ -308,7 +335,9 @@ class NidOcrService {
               guarantorName = nameText;
             } else if (i + 1 < lines.length) {
               String nextLine = lines[i + 1].trim();
-              nextLine = nextLine.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+              nextLine = nextLine
+                  .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                  .trim();
               // Apply cleaning
               nextLine = _cleanName(nextLine);
               if (nextLine.isNotEmpty &&
@@ -322,16 +351,17 @@ class NidOcrService {
                 guarantorName = nextLine;
               }
             }
-            break;  // Only once
+            break; // Only once
           }
 
           // Guarantor NID Number
-          if (guarantorNidNumber.isEmpty && (line.contains('গ্যারান্টর NID') ||
-              line.contains('Guarantor NID') ||
-              line.contains('গ্যারান্টর NID No') ||
-              line.contains('Guarantor NID No') ||
-              line.contains('গ্যারান্টর NID নং') ||
-              line.contains('গ্যারান্টর NIDঃ'))) {
+          if (guarantorNidNumber.isEmpty &&
+              (line.contains('গ্যারান্টর NID') ||
+                  line.contains('Guarantor NID') ||
+                  line.contains('গ্যারান্টর NID No') ||
+                  line.contains('Guarantor NID No') ||
+                  line.contains('গ্যারান্টর NID নং') ||
+                  line.contains('গ্যারান্টর NIDঃ'))) {
             String nidText = line
                 .replaceAll('গ্যারান্টর NID', '')
                 .replaceAll('Guarantor NID', '')
@@ -349,15 +379,18 @@ class NidOcrService {
             guarantorNidNumber = _extractNidNumber(nidText);
           } else if (i + 1 < lines.length && guarantorNidNumber.isEmpty) {
             String nextLine = lines[i + 1].trim();
-            nextLine = nextLine.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+            nextLine = nextLine
+                .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                .trim();
             guarantorNidNumber = _extractNidNumber(nextLine);
           }
 
           // Guarantor Address
-          if (guarantorAddress.isEmpty && (line.contains('গ্যারান্টর ঠিকানা') ||
-              line.contains('Guarantor Address') ||
-              line.contains('গ্যারান্টরের ঠিকানা') ||
-              line.contains('গ্যারান্টর ঠিকানাঃ'))) {
+          if (guarantorAddress.isEmpty &&
+              (line.contains('গ্যারান্টর ঠিকানা') ||
+                  line.contains('Guarantor Address') ||
+                  line.contains('গ্যারান্টরের ঠিকানা') ||
+                  line.contains('গ্যারান্টর ঠিকানাঃ'))) {
             String addressText = line
                 .replaceAll('গ্যারান্টর ঠিকানা', '')
                 .replaceAll('Guarantor Address', '')
@@ -368,13 +401,17 @@ class NidOcrService {
                 .replaceAll('ঃ', '')
                 .replaceAll(':', '')
                 .trim();
-            addressText = addressText.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+            addressText = addressText
+                .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                .trim();
 
             if (addressText.isNotEmpty && addressText.length > 5) {
               guarantorAddress = addressText;
             } else if (i + 1 < lines.length) {
               String nextLine = lines[i + 1].trim();
-              nextLine = nextLine.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+              nextLine = nextLine
+                  .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                  .trim();
               if (nextLine.isNotEmpty &&
                   !nextLine.contains('ফোন') &&
                   !nextLine.contains('Phone') &&
@@ -386,13 +423,14 @@ class NidOcrService {
           }
 
           // Guarantor Phone
-          if (guarantorPhone.isEmpty && (line.contains('গ্যারান্টর ফোন') ||
-              line.contains('Guarantor Phone') ||
-              line.contains('গ্যারান্টর মোবাইল') ||
-              line.contains('Guarantor Mobile') ||
-              line.contains('গ্যারান্টরের ফোন') ||
-              line.contains('গ্যারান্টর ফোনঃ') ||
-              line.contains('গ্যারান্টর মোবাইলঃ'))) {
+          if (guarantorPhone.isEmpty &&
+              (line.contains('গ্যারান্টর ফোন') ||
+                  line.contains('Guarantor Phone') ||
+                  line.contains('গ্যারান্টর মোবাইল') ||
+                  line.contains('Guarantor Mobile') ||
+                  line.contains('গ্যারান্টরের ফোন') ||
+                  line.contains('গ্যারান্টর ফোনঃ') ||
+                  line.contains('গ্যারান্টর মোবাইলঃ'))) {
             String phoneText = line
                 .replaceAll('গ্যারান্টর ফোন', '')
                 .replaceAll('Guarantor Phone', '')
@@ -408,19 +446,27 @@ class NidOcrService {
                 .replaceAll('ঃ', '')
                 .replaceAll(':', '')
                 .trim();
-            phoneText = phoneText.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+            phoneText = phoneText
+                .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                .trim();
 
             if (RegExp(r'\d{11}').hasMatch(phoneText) ||
                 RegExp(r'\d{3}\s+\d{3}\s+\d{5}').hasMatch(phoneText) ||
                 RegExp(r'\d{4}\s+\d{3}\s+\d{4}').hasMatch(phoneText)) {
-              guarantorPhone = phoneText.replaceAll(RegExp(r'[^\d\s]'), '').trim();
+              guarantorPhone = phoneText
+                  .replaceAll(RegExp(r'[^\d\s]'), '')
+                  .trim();
             } else if (i + 1 < lines.length) {
               String nextLine = lines[i + 1].trim();
-              nextLine = nextLine.replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '').trim();
+              nextLine = nextLine
+                  .replaceAll(RegExp(r'^[:\s]+|[:\s]+$'), '')
+                  .trim();
               if (RegExp(r'\d{11}').hasMatch(nextLine) ||
                   RegExp(r'\d{3}\s+\d{3}\s+\d{5}').hasMatch(nextLine) ||
                   RegExp(r'\d{4}\s+\d{3}\s+\d{4}').hasMatch(nextLine)) {
-                guarantorPhone = nextLine.replaceAll(RegExp(r'[^\d\s]'), '').trim();
+                guarantorPhone = nextLine
+                    .replaceAll(RegExp(r'[^\d\s]'), '')
+                    .trim();
               }
             }
           }
@@ -485,14 +531,15 @@ class NidOcrService {
     int totalDigits = 0;
     for (String group in groups) {
       String digits = group.replaceAll(RegExp(r'[^\d]'), '');
-      if (digits.isNotEmpty && digits.length <= 10) {  // Increased group size limit
+      if (digits.isNotEmpty && digits.length <= 10) {
+        // Increased group size limit
         if (totalDigits + digits.length > 15) {
           break;
         }
         if (totalDigits > 0) {
           nidBuf.write(' ');
         }
-        nidBuf.write(group);  // Preserve original formatting
+        nidBuf.write(group); // Preserve original formatting
         totalDigits += digits.length;
         // Stop once we hit a valid NID length
         if (totalDigits == 10 || totalDigits == 14 || totalDigits == 15) {
@@ -528,8 +575,10 @@ class NidOcrService {
       case 'nidNumber':
         return _extractNidNumber(value);
       case 'dateOfBirth':
-      // Remove any trailing garbage after date
-        var dateMatch = RegExp(r'\d{1,2}\s+[A-Za-z]{3}\s+\d{4}|\d{2}[/-]\d{2}[/-]\d{4}|\d{4}[/-]\d{2}[/-]\d{2}').firstMatch(value);
+        // Remove any trailing garbage after date
+        var dateMatch = RegExp(
+          r'\d{1,2}\s+[A-Za-z]{3}\s+\d{4}|\d{2}[/-]\d{2}[/-]\d{4}|\d{4}[/-]\d{2}[/-]\d{2}',
+        ).firstMatch(value);
         if (dateMatch != null) {
           return dateMatch.group(0)!;
         }
@@ -551,8 +600,13 @@ class NidOcrService {
     final words = name.split(' ');
     final List<String> cleanedWords = [];
     for (String word in words) {
-      word = word.trim().replaceAll(RegExp(r'[.,:;!?\s]+$'), ''); // Remove trailing punctuation/spaces
-      if (word.isNotEmpty && word.length > 2 && (word[0].toUpperCase() == word[0] || word == word.toUpperCase())) {
+      word = word.trim().replaceAll(
+        RegExp(r'[.,:;!?\s]+$'),
+        '',
+      ); // Remove trailing punctuation/spaces
+      if (word.isNotEmpty &&
+          word.length > 2 &&
+          (word[0].toUpperCase() == word[0] || word == word.toUpperCase())) {
         cleanedWords.add(word);
       }
       if (cleanedWords.length >= 4) break; // Limit to max 4 words
@@ -572,7 +626,9 @@ class NidOcrService {
   /// Parse date string to DateTime
   static DateTime? _parseDate(String dateStr) {
     // DD MMM YYYY
-    var match = RegExp(r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})').firstMatch(dateStr);
+    var match = RegExp(
+      r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})',
+    ).firstMatch(dateStr);
     if (match != null) {
       int day = int.tryParse(match.group(1)!) ?? 0;
       String monStr = match.group(2)!.toLowerCase();
@@ -663,7 +719,9 @@ class NidOcrService {
         source: ImageSource.camera,
         imageQuality: 80,
       );
-      return image?.path;
+      if (image == null) return null;
+      final file = await ImageCompressionService.ensureForXFile(image);
+      return file.path;
     } catch (e) {
       throw Exception('Failed to capture image: $e');
     }

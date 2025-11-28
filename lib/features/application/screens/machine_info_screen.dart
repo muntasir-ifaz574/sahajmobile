@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/application_provider.dart';
 import '../../../shared/models/application_model.dart';
+import '../../../shared/services/image_compression_service.dart';
 
 class MachineInfoScreen extends ConsumerStatefulWidget {
   const MachineInfoScreen({super.key});
@@ -57,7 +58,8 @@ class _MachineInfoScreenState extends ConsumerState<MachineInfoScreen> {
           _isScanning = true;
         });
 
-        final inputImage = InputImage.fromFilePath(image.path);
+        final compressed = await ImageCompressionService.ensureForXFile(image);
+        final inputImage = InputImage.fromFilePath(compressed.path);
         final textRecognizer = TextRecognizer();
         final RecognizedText recognizedText = await textRecognizer.processImage(
           inputImage,

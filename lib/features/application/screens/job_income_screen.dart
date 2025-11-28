@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/application_model.dart';
 import '../../../shared/providers/application_provider.dart';
 import '../../../shared/services/bkash_statement_ocr_service.dart';
+import '../../../shared/services/image_compression_service.dart';
 
 class JobIncomeScreen extends ConsumerStatefulWidget {
   const JobIncomeScreen({super.key});
@@ -41,6 +43,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
   String? _bkashAccountNumber;
   String? _bkashStatementTenure;
   final List<String> _bkashTenureOptions = const ['3', '6', '9', '12'];
+  bool _isCompressingImage = false;
 
   @override
   void initState() {
@@ -158,8 +161,23 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
       );
       if (image != null) {
         setState(() {
-          _frontWorkIdImage = File(image.path);
+          _isCompressingImage = true;
         });
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _frontWorkIdImage = compressed;
+          });
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -182,8 +200,23 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
       );
       if (image != null) {
         setState(() {
-          _frontWorkIdImage = File(image.path);
+          _isCompressingImage = true;
         });
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _frontWorkIdImage = compressed;
+          });
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -206,8 +239,23 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
       );
       if (image != null) {
         setState(() {
-          _backWorkIdImage = File(image.path);
+          _isCompressingImage = true;
         });
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _backWorkIdImage = compressed;
+          });
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -230,8 +278,23 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
       );
       if (image != null) {
         setState(() {
-          _backWorkIdImage = File(image.path);
+          _isCompressingImage = true;
         });
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _backWorkIdImage = compressed;
+          });
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -251,8 +314,23 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
 
       if (image != null) {
         setState(() {
-          _bankStatementFile = File(image.path);
+          _isCompressingImage = true;
         });
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _bankStatementFile = compressed;
+          });
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -271,8 +349,23 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
 
       if (image != null) {
         setState(() {
-          _bankStatementFile = File(image.path);
+          _isCompressingImage = true;
         });
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _bankStatementFile = compressed;
+          });
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -347,9 +440,24 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
 
       if (image != null) {
         setState(() {
-          _bkashStatementFile = File(image.path);
+          _isCompressingImage = true;
         });
-        await _runBkashOcr(image.path);
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _bkashStatementFile = compressed;
+          });
+          await _runBkashOcr(compressed.path);
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -368,9 +476,24 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
 
       if (image != null) {
         setState(() {
-          _bkashStatementFile = File(image.path);
+          _isCompressingImage = true;
         });
-        await _runBkashOcr(image.path);
+        try {
+          final compressed = await ImageCompressionService.ensureForXFile(
+            image,
+          );
+          if (!mounted) return;
+          setState(() {
+            _bkashStatementFile = compressed;
+          });
+          await _runBkashOcr(compressed.path);
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isCompressingImage = false;
+            });
+          }
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -490,6 +613,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
     required File? file,
     required VoidCallback onPickImage,
     required VoidCallback onCaptureImage,
+    bool isBusy = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +688,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                   if (title.contains('Bkash') || title.contains('Bank')) ...[
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: title.contains('Bkash')
+                        onPressed: isBusy
+                            ? null
+                            : title.contains('Bkash')
                             ? _pickBkashStatementPdf
                             : _pickBankStatementPdf,
                         icon: const Icon(Icons.picture_as_pdf, size: 18),
@@ -580,7 +706,7 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                   ],
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: onCaptureImage,
+                      onPressed: isBusy ? null : onCaptureImage,
                       icon: const Icon(Icons.camera_alt, size: 18),
                       label: const Text('Capture'),
                       style: ElevatedButton.styleFrom(
@@ -637,6 +763,20 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_isCompressingImage) ...[
+                Row(
+                  children: const [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 8),
+                    Text('Optimizing image...', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+                SizedBox(height: 12),
+              ],
               // Occupation Text Field
               TextFormField(
                 controller: _occupationController,
@@ -754,7 +894,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _pickFrontJobIdImage,
+                            onPressed: _isCompressingImage
+                                ? null
+                                : _pickFrontJobIdImage,
                             icon: const Icon(Icons.image, size: 18),
                             label: const Text('Upload Image'),
                             style: ElevatedButton.styleFrom(
@@ -767,7 +909,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _captureFrontJobIdImage,
+                            onPressed: _isCompressingImage
+                                ? null
+                                : _captureFrontJobIdImage,
                             icon: const Icon(Icons.camera_alt, size: 18),
                             label: const Text('Capture'),
                             style: ElevatedButton.styleFrom(
@@ -854,7 +998,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _pickBackJobIdImage,
+                            onPressed: _isCompressingImage
+                                ? null
+                                : _pickBackJobIdImage,
                             icon: const Icon(Icons.image, size: 18),
                             label: const Text('Upload Image'),
                             style: ElevatedButton.styleFrom(
@@ -867,7 +1013,9 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _captureBackJobIdImage,
+                            onPressed: _isCompressingImage
+                                ? null
+                                : _captureBackJobIdImage,
                             icon: const Icon(Icons.camera_alt, size: 18),
                             label: const Text('Capture'),
                             style: ElevatedButton.styleFrom(
