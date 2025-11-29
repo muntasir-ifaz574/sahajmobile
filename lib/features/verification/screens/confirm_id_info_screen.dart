@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/nid_provider.dart';
 import '../../../shared/providers/application_provider.dart';
@@ -130,6 +132,9 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     // Contact Number (editable text field)
                     _buildContactNumberField(ref),
+                    const SizedBox(height: 16),
+                    // Profile Photo (optional)
+                    _buildProfilePhotoField(context, ref),
                     const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
@@ -484,6 +489,164 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
 
   Widget _buildContactNumberField(WidgetRef ref) {
     return _ContactNumberTextField(ref: ref);
+  }
+
+  Widget _buildProfilePhotoField(BuildContext context, WidgetRef ref) {
+    final nidState = ref.watch(nidProvider);
+    final profilePhotoPath = nidState.profilePhotoPath;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Profile Photo',
+            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => _showPhotoSourceDialog(context, ref),
+            child: Container(
+              height: 120,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.borderColor),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey[50],
+              ),
+              child: profilePhotoPath != null && profilePhotoPath.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(profilePhotoPath),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(
+                              Icons.error_outline,
+                              color: AppTheme.errorColor,
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.camera_alt,
+                          size: 32,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap to capture photo',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          if (profilePhotoPath != null && profilePhotoPath.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _showPhotoSourceDialog(context, ref),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Change Photo'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    ref.read(nidProvider.notifier).updateProfilePhoto(null);
+                  },
+                  icon: const Icon(Icons.delete, size: 16),
+                  label: const Text('Remove'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.errorColor,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showPhotoSourceDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final ImagePicker picker = ImagePicker();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bottomSheetContext) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () async {
+                  Navigator.of(bottomSheetContext).pop();
+                  await _capturePhoto(context, ref, picker, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () async {
+                  Navigator.of(bottomSheetContext).pop();
+                  await _capturePhoto(
+                    context,
+                    ref,
+                    picker,
+                    ImageSource.gallery,
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _capturePhoto(
+    BuildContext context,
+    WidgetRef ref,
+    ImagePicker picker,
+    ImageSource source,
+  ) async {
+    try {
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+      if (image != null) {
+        ref.read(nidProvider.notifier).updateProfilePhoto(image.path);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error capturing photo: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 }
 

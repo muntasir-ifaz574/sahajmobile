@@ -192,6 +192,9 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'imei2': machine.imei2,
       };
 
+      // Get profile photo from nid provider
+      final profilePhotoPath = ref.read(nidProvider).profilePhotoPath;
+
       // File fields (paths)
       final Map<String, String?> filePaths = {
         'front_nid': personal.nidFrontImage,
@@ -203,6 +206,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'bKash_statement': finalBkashPath,
         'bank_statement': finalBankPath,
         'customer_signature': finalSignaturePath,
+        'profile_photo': profilePhotoPath,
       };
 
       final result = await ApiService.submitApplication(
