@@ -1254,34 +1254,34 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
               ],
 
               // Validation message for statements
-              // if (_bankStatementFile == null && _bkashStatementFile == null)
-              //   Container(
-              //     padding: const EdgeInsets.all(12),
-              //     decoration: BoxDecoration(
-              //       color: Colors.orange.shade50,
-              //       borderRadius: BorderRadius.circular(8),
-              //       border: Border.all(color: Colors.orange.shade200),
-              //     ),
-              //     child: Row(
-              //       children: [
-              //         Icon(
-              //           Icons.info_outline,
-              //           color: Colors.orange.shade700,
-              //           size: 20,
-              //         ),
-              //         const SizedBox(width: 8),
-              //         Expanded(
-              //           child: Text(
-              //             'At least one statement (Bank or Bkash) is required',
-              //             style: TextStyle(
-              //               fontSize: 12,
-              //               color: Colors.orange.shade700,
-              //             ),
-              //           ),
-              //         ),
-              //       ],
-              //     ),
-              //   ),
+              if (_bankStatementFile == null && _bkashStatementFile == null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.orange.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'At least one statement (Bank or Bkash) is required',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 24),
 
               // Next Button
@@ -1295,18 +1295,18 @@ class _JobIncomeScreenState extends ConsumerState<JobIncomeScreen> {
                     }
 
                     // Validate that at least one statement is selected
-                    // if (_bankStatementFile == null &&
-                    //     _bkashStatementFile == null) {
-                    //   ScaffoldMessenger.of(context).showSnackBar(
-                    //     const SnackBar(
-                    //       content: Text(
-                    //         'Please upload at least one statement (Bank or Bkash)',
-                    //       ),
-                    //       backgroundColor: Colors.red,
-                    //     ),
-                    //   );
-                    //   return;
-                    // }
+                    if (_bankStatementFile == null &&
+                        _bkashStatementFile == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please upload at least one statement (Bank or Bkash)',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
 
                     // if (_bkashStatementFile != null) {
                     //   final contactNumberRaw =
