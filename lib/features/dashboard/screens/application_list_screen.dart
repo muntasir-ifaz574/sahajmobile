@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/services/api_service.dart';
+import '../providers/application_list_provider.dart';
 
 class ApplicationListScreen extends ConsumerStatefulWidget {
   const ApplicationListScreen({super.key});
@@ -43,36 +42,25 @@ class _BoldValueText extends StatelessWidget {
   }
 }
 
-class _FinancialInfoItem {
-  final String label;
-  final String value;
-
-  const _FinancialInfoItem({required this.label, required this.value});
-}
-
 class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     with SingleTickerProviderStateMixin {
-  List<Map<String, dynamic>> _applications = [];
-  bool _isLoading = true;
-  String? _error;
   late TabController _tabController;
   final Set<String> _expandedItems = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  final Map<String, String> _financialInfoData = {};
-  final Map<String, String> _financialInfoErrors = {};
-  final Set<String> _financialInfoLoading = {};
-  final Set<String> _financialInfoExpanded = {};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _loadApplications();
+    _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase().trim();
       });
+    });
+    // Load applications when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(applicationListProvider.notifier).loadApplications();
     });
   }
 
@@ -83,289 +71,30 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     super.dispose();
   }
 
-  Future<void> _loadApplications() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final applications = await ApiService.getCustomerShopList();
-      if (!mounted) return;
-      setState(() {
-        _applications = applications;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  String _getStatusText(String? status) {
-    switch (status) {
-      case '1':
-        return 'Approved';
-      case '2':
-        return 'Pending';
-      case '3':
-        return 'Disapproved';
-      default:
-        return 'Unknown';
-    }
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case '1':
-        return AppTheme.successColor;
-      case '2':
-        return AppTheme.primaryColor;
-      case '3':
-        return AppTheme.errorColor;
-      default:
-        return AppTheme.textSecondary;
-    }
-  }
-
-  String _formatDate(String? dateString) {
-    if (dateString == null || dateString == 'N/A') {
-      return 'N/A';
-    }
-    try {
-      final dateTime = DateTime.parse(dateString);
-      return DateFormat('d MMM yyyy').format(dateTime);
-    } catch (e) {
-      return dateString;
-    }
-  }
-
-  String _formatDownPayment(String? downPayment) {
-    if (downPayment == null || downPayment == 'N/A') {
-      return 'N/A';
-    }
-    try {
-      final value = double.parse(downPayment);
-      return value.round().toString();
-    } catch (e) {
-      return downPayment;
-    }
-  }
-
-  DateTime? _parseDate(String? dateString) {
-    if (dateString == null || dateString == 'N/A' || dateString.isEmpty) {
-      return null;
-    }
-    try {
-      return DateTime.parse(dateString);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  List<Map<String, dynamic>> _getFilteredApplications(String status) {
-    var filtered = _applications
-        .where((app) => app['status']?.toString() == status)
-        .toList();
-
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((app) {
-        final applicant = (app['applicant']?.toString() ?? '').toLowerCase();
-        final telephone = (app['telephone']?.toString() ?? '').toLowerCase();
-        return applicant.contains(_searchQuery) ||
-            telephone.contains(_searchQuery);
-      }).toList();
-    }
-
-    filtered.sort((a, b) {
-      final dateA = _parseDate(a['date']?.toString());
-      final dateB = _parseDate(b['date']?.toString());
-
-      if (dateA == null && dateB == null) return 0;
-      if (dateA == null) return 1;
-      if (dateB == null) return -1;
-      return dateB.compareTo(dateA);
-    });
-
-    return filtered;
-  }
-
-  List<_FinancialInfoItem> _extractFinancialInfoItems(String? data) {
-    if (data == null || data.trim().isEmpty) {
-      return const [];
-    }
-
-    final lines = data
-        .replaceAll('\t', ' ')
-        .split(RegExp(r'\r\n|\n'))
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
-
-    final entries = <MapEntry<String, String>>[];
-    for (final line in lines) {
-      final separatorIndex = line.indexOf(':');
-      if (separatorIndex == -1) continue;
-      final key = line.substring(0, separatorIndex).trim();
-      final value = line.substring(separatorIndex + 1).trim();
-      if (key.isEmpty || value.isEmpty) continue;
-      entries.add(MapEntry(key, value));
-    }
-
-    MapEntry<String, String>? findEntry(List<String> needles) {
-      for (final entry in entries) {
-        final keyLower = entry.key.toLowerCase();
-        if (needles.any((needle) => keyLower.contains(needle))) {
-          return entry;
-        }
-      }
-      return null;
-    }
-
-    final items = <_FinancialInfoItem>[];
-
-    void addItem({
-      required List<String> keys,
-      required String label,
-      String Function(MapEntry<String, String>)? valueBuilder,
-    }) {
-      final entry = findEntry(keys);
-      if (entry == null || entry.key.isEmpty) return;
-      final value = valueBuilder != null
-          ? valueBuilder(entry)
-          : entry.value.trim();
-      if (value.isEmpty) return;
-      items.add(_FinancialInfoItem(label: label, value: value));
-    }
-
-    addItem(keys: ['emi plan'], label: 'EMI Plan');
-
-    addItem(keys: ['mrp'], label: 'Cell Phone Price');
-
-    addItem(
-      keys: ['emi charge'],
-      label: 'EMI Charge',
-      valueBuilder: (entry) => entry.value.replaceAll('(+) ', '').trim(),
-    );
-
-    addItem(
-      keys: ['net price with emi charge'],
-      label: 'Total Price with EMI Charge',
-    );
-
-    addItem(
-      keys: ['down-payment', 'down payment'],
-      label: 'Down Payment',
-      valueBuilder: (entry) {
-        final amount = entry.value;
-        final percentMatch = RegExp(
-          r'([0-9]+(?:\.[0-9]+)?)\s*%',
-        ).firstMatch(entry.key);
-        if (percentMatch != null) {
-          final percent = double.tryParse(percentMatch.group(1) ?? '');
-          if (percent != null) {
-            final formatted = percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2);
-            return '$amount ($formatted%)';
-          }
-          return '$amount (${percentMatch.group(1)}%)';
-        }
-        return amount;
-      },
-    );
-
-    addItem(
-      keys: ['net instalment amount', 'net installment amount'],
-      label: 'Total Installment Amount',
-    );
-
-    final paymentEntry = findEntry(['weekly payment', 'monthly payment']);
-    if (paymentEntry != null && paymentEntry.key.isNotEmpty) {
-      final label = paymentEntry.key.toLowerCase().contains('weekly')
-          ? 'Weekly Payment'
-          : 'Monthly Payment';
-      items.add(
-        _FinancialInfoItem(label: label, value: paymentEntry.value.trim()),
-      );
-    }
-
-    addItem(
-      keys: ['instalment start date', 'installment start date'],
-      label: 'Installment Start Date',
-    );
-
-    addItem(keys: ['emi payment portal'], label: 'EMI Payment Portal');
-
-    return items;
-  }
-
   Future<void> _toggleFinancialInfo(String id) async {
-    if (_financialInfoExpanded.contains(id)) {
-      setState(() {
-        _financialInfoExpanded.remove(id);
-      });
-      return;
-    }
+    final notifier = ref.read(applicationListProvider.notifier);
+    await notifier.toggleFinancialInfo(id);
 
-    if (_financialInfoData.containsKey(id)) {
-      setState(() {
-        _financialInfoExpanded.add(id);
-      });
-      return;
-    }
+    if (!mounted) return;
+    final state = ref.read(applicationListProvider);
+    final error = state.financialInfoErrors[id];
 
-    setState(() {
-      _financialInfoLoading.add(id);
-      _financialInfoErrors.remove(id);
-    });
-
-    try {
-      final info = await ApiService.getFinancialInfo(applicationId: id);
-      if (!mounted) return;
-      final trimmed = info.trim();
-      final isEmptyResult =
-          trimmed.isEmpty ||
-          trimmed == '{}' ||
-          trimmed == '[]' ||
-          trimmed.toLowerCase() == 'null';
-      if (isEmptyResult) {
-        setState(() {
-          _financialInfoData.remove(id);
-          _financialInfoErrors.remove(id);
-          _financialInfoExpanded.remove(id);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Financial info not found')),
-        );
-        return;
-      }
-      setState(() {
-        _financialInfoErrors.remove(id);
-        _financialInfoData[id] = info;
-        _financialInfoExpanded.add(id);
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _financialInfoErrors[id] = e.toString();
-        _financialInfoExpanded.remove(id);
-      });
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Financial info unavailable')),
       );
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _financialInfoLoading.remove(id);
-      });
+    } else if (!state.financialInfoData.containsKey(id) &&
+        !state.financialInfoExpanded.contains(id)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Financial info not found')));
     }
   }
 
   void _copyFinancialInfo(String id) {
-    final data = _financialInfoData[id];
-    if (data == null) return;
+    final notifier = ref.read(applicationListProvider.notifier);
+    final data = notifier.getFinancialInfo(id);
+    if (data.isEmpty) return;
     Clipboard.setData(ClipboardData(text: data));
     ScaffoldMessenger.of(
       context,
@@ -373,8 +102,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   }
 
   Future<void> _shareFinancialInfo(String id) async {
-    final data = _financialInfoData[id];
-    if (data == null) return;
+    final notifier = ref.read(applicationListProvider.notifier);
+    final data = notifier.getFinancialInfo(id);
+    if (data.isEmpty) return;
     try {
       await Share.share(data, subject: 'Financial Information');
     } on MissingPluginException {
@@ -394,6 +124,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(applicationListProvider);
+    final notifier = ref.read(applicationListProvider.notifier);
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -407,21 +140,25 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
           icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
           onPressed: () => context.go('/dashboard'),
         ),
-        bottom: _isLoading || _error != null
+        bottom: state.isLoading || state.error != null
             ? null
             : TabBar(
                 controller: _tabController,
                 labelColor: AppTheme.primaryColor,
                 unselectedLabelColor: AppTheme.textSecondary,
                 indicatorColor: AppTheme.primaryColor,
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                ),
                 tabs: const [
                   Tab(text: 'Pending'),
+                  Tab(text: 'In Progress'),
                   Tab(text: 'Approved'),
                   Tab(text: 'Disapproved'),
                 ],
               ),
       ),
-      body: _isLoading
+      body: state.isLoading
           ? const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(
@@ -429,7 +166,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                 ),
               ),
             )
-          : _error != null
+          : state.error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -441,7 +178,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _error!,
+                    state.error!,
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppTheme.textSecondary,
@@ -450,7 +187,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _loadApplications,
+                    onPressed: () => notifier.loadApplications(),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -458,12 +195,13 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
             )
           : Column(
               children: [
-                if (!_isLoading && _error == null) _buildSearchBar(),
+                if (!state.isLoading && state.error == null) _buildSearchBar(),
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     children: [
                       _buildApplicationsList('2'), // Pending
+                      _buildApplicationsList('4'), // In Progress
                       _buildApplicationsList('1'), // Approved
                       _buildApplicationsList('3'), // Disapproved
                     ],
@@ -525,7 +263,11 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   }
 
   Widget _buildApplicationsList(String status) {
-    final filteredApplications = _getFilteredApplications(status);
+    final notifier = ref.read(applicationListProvider.notifier);
+    final filteredApplications = notifier.getFilteredApplications(
+      status,
+      _searchQuery,
+    );
 
     if (filteredApplications.isEmpty) {
       return Center(
@@ -543,7 +285,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
             Text(
               _searchQuery.isNotEmpty
                   ? 'No applications found matching "${_searchController.text}"'
-                  : 'No ${_getStatusText(status)} applications found',
+                  : 'No ${ApplicationListNotifier.getStatusText(status)} applications found',
               style: const TextStyle(
                 fontSize: 16,
                 color: AppTheme.textSecondary,
@@ -556,7 +298,8 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: _loadApplications,
+      onRefresh: () =>
+          ref.read(applicationListProvider.notifier).loadApplications(),
       child: ListView.builder(
         padding: const EdgeInsets.all(8),
         itemCount: filteredApplications.length,
@@ -570,8 +313,8 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
 
   Widget _buildApplicationListItem(Map<String, dynamic> app) {
     final status = app['status']?.toString();
-    final statusText = _getStatusText(status);
-    final statusColor = _getStatusColor(status);
+    final statusText = ApplicationListNotifier.getStatusText(status);
+    final statusColor = ApplicationListNotifier.getStatusColor(status);
     final applicant = app['applicant']?.toString() ?? 'N/A';
     final telephone = app['telephone']?.toString() ?? 'N/A';
     final paymentTearm = app['name']?.toString() ?? 'N/A';
@@ -652,7 +395,10 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                       const SizedBox(height: 4),
                       _BoldValueText(label: 'Tel', value: telephone),
                       const SizedBox(height: 2),
-                      _BoldValueText(label: 'Date', value: _formatDate(date)),
+                      _BoldValueText(
+                        label: 'Date',
+                        value: ApplicationListNotifier.formatDate(date),
+                      ),
                       const SizedBox(height: 2),
                       _BoldValueText(label: 'Brand', value: brand),
                       _BoldValueText(label: 'Model', value: model),
@@ -666,7 +412,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                       const SizedBox(height: 2),
                       _BoldValueText(
                         label: 'Down Payment',
-                        value: _formatDownPayment(downPayment),
+                        value: ApplicationListNotifier.formatDownPayment(
+                          downPayment,
+                        ),
                       ),
                     ],
                   ),
@@ -792,10 +540,12 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   }
 
   Widget _buildFinancialInfoSection(String id) {
-    final isExpanded = _financialInfoExpanded.contains(id);
-    final isLoading = _financialInfoLoading.contains(id);
-    final error = _financialInfoErrors[id];
-    final data = _financialInfoData[id];
+    final notifier = ref.read(applicationListProvider.notifier);
+    final isExpanded = notifier.isFinancialInfoExpanded(id);
+    final isLoading = notifier.isFinancialInfoLoading(id);
+    final error = notifier.getFinancialInfoError(id);
+    final data = notifier.getFinancialInfo(id);
+    final dataOrNull = data.isEmpty ? null : data;
 
     return Column(
       children: [
@@ -826,7 +576,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
         ),
         AnimatedCrossFade(
           firstChild: const SizedBox.shrink(),
-          secondChild: _buildFinancialInfoContent(id, data, error),
+          secondChild: _buildFinancialInfoContent(id, dataOrNull, error),
           crossFadeState: isExpanded
               ? CrossFadeState.showSecond
               : CrossFadeState.showFirst,
@@ -859,7 +609,9 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => _toggleFinancialInfo(id),
+              onPressed: () async {
+                await _toggleFinancialInfo(id);
+              },
               child: const Text('Retry'),
             ),
           ),
@@ -874,7 +626,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
         ),
       );
     } else {
-      final items = _extractFinancialInfoItems(data);
+      final items = ApplicationListNotifier.extractFinancialInfoItems(data);
       child = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

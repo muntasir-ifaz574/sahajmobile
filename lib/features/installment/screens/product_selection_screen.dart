@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/services/api_service.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../../shared/providers/application_provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -29,6 +30,38 @@ class _ProductSelectionScreenState
   void initState() {
     super.initState();
     _loadBrands();
+    // Load existing product from provider after frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadExistingProduct();
+    });
+  }
+
+  void _loadExistingProduct() {
+    final existingProduct = ref.read(selectedProductProvider);
+    if (existingProduct != null && mounted) {
+      setState(() {
+        selectedBrand = existingProduct.brand;
+      });
+      // Load models for the existing brand
+      if (existingProduct.brand.isNotEmpty) {
+        _loadModels(existingProduct.brand).then((_) {
+          if (mounted && existingProduct.model.isNotEmpty) {
+            // Find and select the matching model
+            final modelMatch = modelOptions.firstWhere(
+              (m) => m['description'] == existingProduct.model,
+              orElse: () => {},
+            );
+            if (modelMatch.isNotEmpty) {
+              final desc = modelMatch['description'] ?? '';
+              final price = modelMatch['price'] ?? existingProduct.price.toString();
+              setState(() {
+                selectedModel = '$desc|$price';
+              });
+            }
+          }
+        });
+      }
+    }
   }
 
   Future<void> _loadBrands() async {

@@ -26,6 +26,7 @@ class ApplicationDataState {
   final String? bkashAccountNumber;
   final String? bkashStatementTenure;
   final String? bkashStatementBalance;
+  final String? profilePhotoPath;
   final bool isLoading;
   final String? error;
 
@@ -44,6 +45,7 @@ class ApplicationDataState {
     this.bkashAccountNumber,
     this.bkashStatementTenure,
     this.bkashStatementBalance,
+    this.profilePhotoPath,
     this.isLoading = false,
     this.error,
   });
@@ -63,8 +65,13 @@ class ApplicationDataState {
     String? bkashAccountNumber,
     String? bkashStatementTenure,
     String? bkashStatementBalance,
+    String? profilePhotoPath,
     bool? isLoading,
     String? error,
+    bool clearProfilePhotoPath = false,
+    bool clearCustomerSignaturePath = false,
+    bool clearBkashStatementPath = false,
+    bool clearBankStatementPath = false,
   }) {
     return ApplicationDataState(
       selectedProduct: selectedProduct ?? this.selectedProduct,
@@ -74,15 +81,23 @@ class ApplicationDataState {
       addressInfo: addressInfo ?? this.addressInfo,
       jobInfo: jobInfo ?? this.jobInfo,
       guarantorInfo: guarantorInfo ?? this.guarantorInfo,
-      customerSignaturePath:
-          customerSignaturePath ?? this.customerSignaturePath,
-      bkashStatementPath: bkashStatementPath ?? this.bkashStatementPath,
-      bankStatementPath: bankStatementPath ?? this.bankStatementPath,
+      customerSignaturePath: clearCustomerSignaturePath
+          ? null
+          : (customerSignaturePath ?? this.customerSignaturePath),
+      bkashStatementPath: clearBkashStatementPath
+          ? null
+          : (bkashStatementPath ?? this.bkashStatementPath),
+      bankStatementPath: clearBankStatementPath
+          ? null
+          : (bankStatementPath ?? this.bankStatementPath),
       bkashAccountName: bkashAccountName ?? this.bkashAccountName,
       bkashAccountNumber: bkashAccountNumber ?? this.bkashAccountNumber,
       bkashStatementTenure: bkashStatementTenure ?? this.bkashStatementTenure,
       bkashStatementBalance:
           bkashStatementBalance ?? this.bkashStatementBalance,
+      profilePhotoPath: clearProfilePhotoPath
+          ? null
+          : (profilePhotoPath ?? this.profilePhotoPath),
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -210,6 +225,7 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
         'bKash_statement': finalBkashPath,
         'bank_statement': finalBankPath,
         'customer_signature': finalSignaturePath,
+        'profile_photo': state.profilePhotoPath,
       };
 
       final result = await ApiService.submitApplication(
@@ -294,6 +310,14 @@ class ApplicationDataNotifier extends Notifier<ApplicationDataState> {
 
   void setBankStatementPath(String? path) {
     state = state.copyWith(bankStatementPath: path, error: null);
+  }
+
+  void setProfilePhotoPath(String? path) {
+    state = state.copyWith(
+      profilePhotoPath: path,
+      clearProfilePhotoPath: path == null,
+      error: null,
+    );
   }
 
   void setBkashAccountInfo({String? name, String? number}) {
@@ -489,19 +513,44 @@ final machineInfoProvider = Provider<MachineInfo?>((ref) {
 });
 
 final paymentSummaryProvider = Provider<PaymentSummary?>((ref) {
-  return ref.read(applicationDataProvider.notifier).getPaymentSummary();
+  // Watch both product and installment plan to reactively update when either changes
+  ref.watch(selectedProductProvider); // Watch product to trigger update when it changes
+  final plan = ref.watch(installmentPlanProvider);
+  
+  if (plan == null) return null;
+  
+  return PaymentSummary(
+    orderAmount: plan.orderAmount,
+    downPayment: plan.downPayment,
+    downPaymentPercentage: plan.downPaymentPercentage,
+    paymentTerms: plan.paymentTerms,
+    monthlyPayment: plan.monthlyPayment,
+    serviceFeeRate: plan.serviceFeeRate,
+    totalServiceFee: plan.totalServiceFee,
+    totalOutstanding: plan.totalOutstanding,
+    paymentFrequency: plan.paymentFrequency,
+  );
 });
 
 final productDisplayNameProvider = Provider<String>((ref) {
-  return ref.read(applicationDataProvider.notifier).getProductDisplayName();
+  // Watch the selectedProduct to reactively update when product changes
+  final product = ref.watch(selectedProductProvider);
+  if (product == null) return 'No product selected';
+  return '${product.brand}, ${product.model}';
 });
 
 final primaryIMEIProvider = Provider<String>((ref) {
-  return ref.read(applicationDataProvider.notifier).getPrimaryIMEI();
+  // Watch the machineInfo to reactively update when IMEI changes
+  final machineInfo = ref.watch(machineInfoProvider);
+  if (machineInfo == null) return 'No IMEI available';
+  return machineInfo.imei1;
 });
 
 final secondaryIMEIProvider = Provider<String?>((ref) {
-  return ref.read(applicationDataProvider.notifier).getSecondaryIMEI();
+  // Watch the machineInfo to reactively update when IMEI changes
+  final machineInfo = ref.watch(machineInfoProvider);
+  if (machineInfo == null) return null;
+  return machineInfo.imei2.isNotEmpty ? machineInfo.imei2 : null;
 });
 
 // Additional providers for form data
@@ -709,26 +758,38 @@ final locationDataProvider =
 
 // Validation and completion status providers
 final isPersonalInfoCompleteProvider = Provider<bool>((ref) {
+  // Watch applicationDataProvider to reactively update when personal info changes
+  ref.watch(applicationDataProvider);
   return ref.read(applicationDataProvider.notifier).isPersonalInfoComplete();
 });
 
 final isAddressInfoCompleteProvider = Provider<bool>((ref) {
+  // Watch applicationDataProvider to reactively update when address info changes
+  ref.watch(applicationDataProvider);
   return ref.read(applicationDataProvider.notifier).isAddressInfoComplete();
 });
 
 final isJobInfoCompleteProvider = Provider<bool>((ref) {
+  // Watch applicationDataProvider to reactively update when job info changes
+  ref.watch(applicationDataProvider);
   return ref.read(applicationDataProvider.notifier).isJobInfoComplete();
 });
 
 final isGuarantorInfoCompleteProvider = Provider<bool>((ref) {
+  // Watch applicationDataProvider to reactively update when guarantor info changes
+  ref.watch(applicationDataProvider);
   return ref.read(applicationDataProvider.notifier).isGuarantorInfoComplete();
 });
 
 final isMachineInfoCompleteProvider = Provider<bool>((ref) {
+  // Watch applicationDataProvider to reactively update when machine info changes
+  ref.watch(applicationDataProvider);
   return ref.read(applicationDataProvider.notifier).isMachineInfoComplete();
 });
 
 final isApplicationCompleteProvider = Provider<bool>((ref) {
+  // Watch applicationDataProvider to reactively update when any info changes
+  ref.watch(applicationDataProvider);
   return ref.read(applicationDataProvider.notifier).isApplicationComplete();
 });
 

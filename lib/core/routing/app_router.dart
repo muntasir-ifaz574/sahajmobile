@@ -19,6 +19,7 @@ import '../../features/installment/screens/product_selection_screen.dart';
 import '../../features/verification/screens/confirm_id_info_screen.dart';
 import '../../features/verification/screens/upload_id_card_screen.dart';
 import '../../shared/providers/auth_provider.dart';
+import '../../shared/providers/application_provider.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/splash_screen.dart';
 
@@ -158,7 +159,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/contract/pre-enroll',
-        builder: (context, state) => const PreEnrollScreen(),
+        builder: (context, state) {
+          // Create a unique key to ensure widget rebuilds when navigating back
+          // This helps when navigating back after changing product/plan
+          final ref = ProviderScope.containerOf(context);
+          final product = ref.read(selectedProductProvider);
+          final plan = ref.read(installmentPlanProvider);
+          final productKey = product != null
+              ? '${product.brand}_${product.model}_${product.price}'
+              : 'no_product';
+          final planKey = plan != null
+              ? '${plan.orderAmount}_${plan.paymentTerms}_${plan.paymentFrequency}'
+              : 'no_plan';
+          return PreEnrollScreen(key: ValueKey('$productKey|$planKey'));
+        },
       ),
       GoRoute(
         path: '/contract/activation',

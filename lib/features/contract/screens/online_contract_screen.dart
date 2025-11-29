@@ -87,13 +87,6 @@ class _OnlineContractScreenState extends ConsumerState<OnlineContractScreen> {
           .setCustomerSignaturePath(filePath);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signature saved successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
         // Navigate to next screen
         context.go('/contract/pre-enroll');
       }

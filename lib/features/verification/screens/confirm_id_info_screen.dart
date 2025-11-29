@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/nid_provider.dart';
 import '../../../shared/providers/application_provider.dart';
 import '../../../shared/models/application_model.dart';
+import '../../../shared/services/image_compression_service.dart';
 
 class ConfirmIdInfoScreen extends ConsumerWidget {
   const ConfirmIdInfoScreen({super.key});
@@ -102,6 +105,9 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Profile Photo (non-mandatory)
+                  _buildProfilePhotoField(ref),
+                  SizedBox(height: 16),
                   // NID Information Display
                   if (nidInfo != null) ...[
                     _buildEditableField(
@@ -127,6 +133,11 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildGenderSelection(ref, nidInfo.gender),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Gender is required',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textHint),
+                    ),
                     const SizedBox(height: 16),
                     // Contact Number (editable text field)
                     _buildContactNumberField(ref),
@@ -153,14 +164,25 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                             return;
                           }
 
+                          // Validate gender is selected
+                          final nidState = ref.read(nidProvider);
+                          final selectedGender =
+                              nidState.selectedGender ?? nidInfo.gender;
+                          if (selectedGender.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Gender is required'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                            return;
+                          }
+
                           // Persist personal info into application provider
                           try {
                             final parsedDob = _parseDobToDateTime(
                               nidInfo.dateOfBirth,
                             );
-                            final selectedGender =
-                                ref.read(nidProvider).selectedGender ??
-                                nidInfo.gender;
                             ref
                                 .read(applicationDataProvider.notifier)
                                 .setPersonalInfo(
@@ -177,6 +199,7 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
                                         .backImagePath,
                                   ),
                                 );
+                            // Profile photo is already saved when captured
                           } catch (_) {
                             // Fallback: ignore and continue; form will block later if needed
                           }
@@ -447,6 +470,7 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
   Widget _buildGenderSelection(WidgetRef ref, String currentGender) {
     final nidState = ref.watch(nidProvider);
     final selectedGender = nidState.selectedGender ?? currentGender;
+    final hasError = selectedGender.isEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,32 +480,42 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
           style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Radio<String>(
-              value: 'Male',
-              groupValue: selectedGender,
-              onChanged: (value) {
-                if (value != null) {
-                  ref.read(nidProvider.notifier).updateSelectedGender(value);
-                }
-              },
-              activeColor: AppTheme.primaryColor,
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: hasError ? AppTheme.errorColor : AppTheme.borderColor,
             ),
-            const Text('Male'),
-            const SizedBox(width: 20),
-            Radio<String>(
-              value: 'Female',
-              groupValue: selectedGender,
-              onChanged: (value) {
-                if (value != null) {
-                  ref.read(nidProvider.notifier).updateSelectedGender(value);
-                }
-              },
-              activeColor: AppTheme.primaryColor,
-            ),
-            const Text('Female'),
-          ],
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.white,
+          ),
+          child: Row(
+            children: [
+              Radio<String>(
+                value: 'Male',
+                groupValue: selectedGender,
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(nidProvider.notifier).updateSelectedGender(value);
+                  }
+                },
+                activeColor: AppTheme.primaryColor,
+              ),
+              const Text('Male'),
+              const SizedBox(width: 20),
+              Radio<String>(
+                value: 'Female',
+                groupValue: selectedGender,
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(nidProvider.notifier).updateSelectedGender(value);
+                  }
+                },
+                activeColor: AppTheme.primaryColor,
+              ),
+              const Text('Female'),
+            ],
+          ),
         ),
       ],
     );
@@ -489,6 +523,10 @@ class ConfirmIdInfoScreen extends ConsumerWidget {
 
   Widget _buildContactNumberField(WidgetRef ref) {
     return _ContactNumberTextField(ref: ref);
+  }
+
+  Widget _buildProfilePhotoField(WidgetRef ref) {
+    return const _ProfilePhotoField();
   }
 }
 
@@ -597,6 +635,236 @@ class _ContactNumberTextFieldState
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Profile Photo Field Widget - Optimized
+class _ProfilePhotoField extends ConsumerStatefulWidget {
+  const _ProfilePhotoField();
+
+  @override
+  ConsumerState<_ProfilePhotoField> createState() => _ProfilePhotoFieldState();
+}
+
+class _ProfilePhotoFieldState extends ConsumerState<_ProfilePhotoField> {
+  static const double _avatarSize = 120.0;
+  static const double _removeButtonSize = 32.0;
+  static const int _imageQuality = 80;
+
+  bool _isProcessing = false;
+  final ImagePicker _imagePicker = ImagePicker();
+
+  Future<void> _processImage(XFile image) async {
+    if (!mounted) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final compressed = await ImageCompressionService.ensureForXFile(image);
+
+      if (!mounted) return;
+
+      ref
+          .read(applicationDataProvider.notifier)
+          .setProfilePhotoPath(compressed.path);
+    } catch (e) {
+      if (!mounted) return;
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error processing image: ${e.toString()}'),
+            backgroundColor: AppTheme.errorColor,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: _imageQuality,
+      );
+
+      if (image != null) {
+        await _processImage(image);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              source == ImageSource.camera
+                  ? 'Error capturing photo: ${e.toString()}'
+                  : 'Error picking photo: ${e.toString()}',
+            ),
+            backgroundColor: AppTheme.errorColor,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  void _removeProfilePhoto() {
+    if (!mounted || _isProcessing) return;
+
+    ref.read(applicationDataProvider.notifier).setProfilePhotoPath(null);
+  }
+
+  void _showImageSourceDialog() {
+    if (_isProcessing) return;
+
+    final profilePhotoPath = ref.read(applicationDataProvider).profilePhotoPath;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            if (profilePhotoPath != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppTheme.errorColor),
+                title: const Text(
+                  'Remove Photo',
+                  style: TextStyle(color: AppTheme.errorColor),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _removeProfilePhoto();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profilePhotoPath = ref
+        .watch(applicationDataProvider)
+        .profilePhotoPath;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Profile Photo (Optional)',
+          style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              InkWell(
+                onTap: _isProcessing ? null : _showImageSourceDialog,
+                borderRadius: BorderRadius.circular(_avatarSize / 2),
+                child: Container(
+                  height: _avatarSize,
+                  width: _avatarSize,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.borderColor, width: 2),
+                    shape: BoxShape.circle,
+                    color: Colors.grey[50],
+                  ),
+                  child: _isProcessing
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.primaryColor,
+                            ),
+                          ),
+                        )
+                      : profilePhotoPath != null
+                      ? ClipOval(
+                          child: Image.file(
+                            File(profilePhotoPath),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildDefaultAvatar(),
+                          ),
+                        )
+                      : _buildDefaultAvatar(),
+                ),
+              ),
+              if (profilePhotoPath != null && !_isProcessing)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: GestureDetector(
+                    onTap: _removeProfilePhoto,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: _removeButtonSize,
+                      height: _removeButtonSize,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return ClipOval(
+      child: Container(
+        color: Colors.grey[200],
+        child: const Icon(Icons.person, size: 60, color: AppTheme.textHint),
       ),
     );
   }

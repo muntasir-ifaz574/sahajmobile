@@ -7,11 +7,17 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/application_provider.dart';
 import '../../../shared/models/application_model.dart';
 
-class PreEnrollScreen extends ConsumerWidget {
+class PreEnrollScreen extends ConsumerStatefulWidget {
   const PreEnrollScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PreEnrollScreen> createState() => _PreEnrollScreenState();
+}
+
+class _PreEnrollScreenState extends ConsumerState<PreEnrollScreen> {
+  @override
+  Widget build(BuildContext context) {
+    // Watch all providers to ensure reactive updates
     final appState = ref.watch(applicationDataProvider);
     final isPersonalDone = ref.watch(isPersonalInfoCompleteProvider);
     final isAddressDone = ref.watch(isAddressInfoCompleteProvider);
