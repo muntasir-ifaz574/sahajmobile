@@ -705,23 +705,37 @@ class ApiService {
   }
 
   // Get customer shop list
-  static Future<List<Map<String, dynamic>>> getCustomerShopList() async {
+  static Future<List<Map<String, dynamic>>> getCustomerShopList({
+    String status = '2',
+  }) async {
     try {
       final shopId = await StorageService.getShopId();
       final response = await _dio.post(
         '/get_customer_shop_list',
-        data: FormData.fromMap({if (shopId != null) 'shop_id': shopId}),
+        data: FormData.fromMap({
+          if (shopId != null) 'shop_id': shopId,
+          'status': status,
+        }),
       );
       final dynamic raw = response.data;
       final Map<String, dynamic> data = raw is String
           ? (jsonDecode(raw) as Map<String, dynamic>)
           : (raw as Map<String, dynamic>);
-      if ((data['status'] as int?) == 1) {
+      final int? statusCode = data['status'] is int
+          ? data['status'] as int?
+          : int.tryParse(data['status']?.toString() ?? '');
+      if (statusCode == 1) {
         final result = data['result'] as List<dynamic>;
         return result
             .whereType<Map<String, dynamic>>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
+      }
+      final responseText = data['response']?.toString().toLowerCase();
+      final messageText = data['message']?.toString().toLowerCase();
+      if (statusCode == 0 ||
+          responseText == 'failure' && messageText?.contains('no data') == true) {
+        return const [];
       }
       throw Exception(
         data['message']?.toString() ?? 'Failed to load customer list',

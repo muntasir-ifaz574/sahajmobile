@@ -14,7 +14,9 @@ class FinancialInfoItem {
 
 // Application List State
 class ApplicationListState {
-  final List<Map<String, dynamic>> applications;
+  static const _undefined = Object();
+
+  final Map<String, List<Map<String, dynamic>>> applicationsByStatus;
   final bool isLoading;
   final String? error;
   final Map<String, String> financialInfoData;
@@ -23,7 +25,7 @@ class ApplicationListState {
   final Set<String> financialInfoExpanded;
 
   const ApplicationListState({
-    this.applications = const [],
+    this.applicationsByStatus = const {},
     this.isLoading = false,
     this.error,
     this.financialInfoData = const {},
@@ -33,18 +35,18 @@ class ApplicationListState {
   });
 
   ApplicationListState copyWith({
-    List<Map<String, dynamic>>? applications,
+    Map<String, List<Map<String, dynamic>>>? applicationsByStatus,
     bool? isLoading,
-    String? error,
+    Object? error = _undefined,
     Map<String, String>? financialInfoData,
     Map<String, String>? financialInfoErrors,
     Set<String>? financialInfoLoading,
     Set<String>? financialInfoExpanded,
   }) {
     return ApplicationListState(
-      applications: applications ?? this.applications,
+      applicationsByStatus: applicationsByStatus ?? this.applicationsByStatus,
       isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
+      error: identical(error, _undefined) ? this.error : error as String?,
       financialInfoData: financialInfoData ?? this.financialInfoData,
       financialInfoErrors: financialInfoErrors ?? this.financialInfoErrors,
       financialInfoLoading: financialInfoLoading ?? this.financialInfoLoading,
@@ -56,18 +58,29 @@ class ApplicationListState {
 
 // Application List Notifier
 class ApplicationListNotifier extends Notifier<ApplicationListState> {
+  static const List<String> statusOrder = ['2', '4', '1', '3'];
+
   @override
   ApplicationListState build() {
     // Don't call async function in build, it will be called from the screen
     return const ApplicationListState();
   }
 
-  Future<void> loadApplications() async {
+  Future<void> loadApplications({String status = '2'}) async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final applications = await ApiService.getCustomerShopList();
-      state = state.copyWith(applications: applications, isLoading: false);
+      final applications = await ApiService.getCustomerShopList(status: status);
+      final updatedMap = Map<String, List<Map<String, dynamic>>>.from(
+        state.applicationsByStatus,
+      );
+      updatedMap[status] = applications;
+
+      state = state.copyWith(
+        applicationsByStatus: updatedMap,
+        isLoading: false,
+        error: null,
+      );
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
     }
@@ -176,7 +189,7 @@ class ApplicationListNotifier extends Notifier<ApplicationListState> {
         return 'Approved';
       case '2':
         return 'Pending';
-      case '3':
+      case '0':
         return 'Disapproved';
       case '4':
         return 'In Progress';
@@ -191,7 +204,7 @@ class ApplicationListNotifier extends Notifier<ApplicationListState> {
         return AppTheme.successColor;
       case '2':
         return AppTheme.primaryColor;
-      case '3':
+      case '0':
         return AppTheme.errorColor;
       case '4':
         return AppTheme.warningColor;
@@ -239,9 +252,10 @@ class ApplicationListNotifier extends Notifier<ApplicationListState> {
     String status,
     String searchQuery,
   ) {
-    var filtered = state.applications
-        .where((app) => app['status']?.toString() == status)
-        .toList();
+    final targetApplications = List<Map<String, dynamic>>.from(
+      state.applicationsByStatus[status] ?? const <Map<String, dynamic>>[],
+    );
+    var filtered = targetApplications;
 
     if (searchQuery.isNotEmpty) {
       filtered = filtered.where((app) {
@@ -377,6 +391,10 @@ class ApplicationListNotifier extends Notifier<ApplicationListState> {
     addItem(keys: ['emi payment portal'], label: 'EMI Payment Portal');
 
     return items;
+  }
+
+  bool hasLoadedStatus(String status) {
+    return state.applicationsByStatus.containsKey(status);
   }
 }
 

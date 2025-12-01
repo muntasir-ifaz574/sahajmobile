@@ -53,6 +53,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase().trim();
@@ -60,12 +61,23 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     });
     // Load applications when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(applicationListProvider.notifier).loadApplications();
+      final initialStatus =
+          ApplicationListNotifier.statusOrder[_tabController.index];
+      ref
+          .read(applicationListProvider.notifier)
+          .loadApplications(status: initialStatus);
     });
+  }
+
+  void _handleTabChange() {
+    if (_tabController.indexIsChanging) return;
+    final status = ApplicationListNotifier.statusOrder[_tabController.index];
+    ref.read(applicationListProvider.notifier).loadApplications(status: status);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -140,16 +152,14 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
           icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
           onPressed: () => context.go('/dashboard'),
         ),
-        bottom: state.isLoading || state.error != null
+        bottom: state.error != null
             ? null
             : TabBar(
                 controller: _tabController,
                 labelColor: AppTheme.primaryColor,
                 unselectedLabelColor: AppTheme.textSecondary,
                 indicatorColor: AppTheme.primaryColor,
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                ),
+                labelStyle: TextStyle(fontSize: 12),
                 tabs: const [
                   Tab(text: 'Pending'),
                   Tab(text: 'In Progress'),
@@ -158,52 +168,29 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
                 ],
               ),
       ),
-      body: state.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppTheme.primaryColor,
-                ),
-              ),
-            )
-          : state.error != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: AppTheme.errorColor,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.error!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => notifier.loadApplications(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
+      body: state.error != null
+          ? _buildErrorState(state.error!, notifier)
           : Column(
               children: [
-                if (!state.isLoading && state.error == null) _buildSearchBar(),
+                if (state.isLoading)
+                  const SizedBox(
+                    height: 3,
+                    child: LinearProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor,
+                      ),
+                      backgroundColor: Colors.transparent,
+                    ),
+                  ),
+                _buildSearchBar(),
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildApplicationsList('2'), // Pending
-                      _buildApplicationsList('4'), // In Progress
-                      _buildApplicationsList('1'), // Approved
-                      _buildApplicationsList('3'), // Disapproved
+                      _buildApplicationsList('2', state.isLoading),
+                      _buildApplicationsList('4', state.isLoading),
+                      _buildApplicationsList('1', state.isLoading),
+                      _buildApplicationsList('3', state.isLoading),
                     ],
                   ),
                 ),
@@ -262,12 +249,39 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     );
   }
 
-  Widget _buildApplicationsList(String status) {
+  Widget _buildApplicationsList(String status, bool isLoading) {
     final notifier = ref.read(applicationListProvider.notifier);
     final filteredApplications = notifier.getFilteredApplications(
       status,
       _searchQuery,
     );
+    final hasLoaded = notifier.hasLoadedStatus(status);
+
+    if (!hasLoaded) {
+      if (isLoading) {
+        return const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+          ),
+        );
+      }
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'No data loaded for this status yet.',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => notifier.loadApplications(status: status),
+              child: const Text('Load now'),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (filteredApplications.isEmpty) {
       return Center(
@@ -298,8 +312,7 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: () =>
-          ref.read(applicationListProvider.notifier).loadApplications(),
+      onRefresh: () => notifier.loadApplications(status: status),
       child: ListView.builder(
         padding: const EdgeInsets.all(8),
         itemCount: filteredApplications.length,
@@ -685,6 +698,30 @@ class _ApplicationListScreenState extends ConsumerState<ApplicationListScreen>
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: child,
+    );
+  }
+
+  Widget _buildErrorState(String error, ApplicationListNotifier notifier) {
+    final currentStatus =
+        ApplicationListNotifier.statusOrder[_tabController.index];
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: AppTheme.errorColor),
+          const SizedBox(height: 16),
+          Text(
+            error,
+            style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => notifier.loadApplications(status: currentStatus),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 }
